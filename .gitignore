@@ -134,3 +134,10 @@ modified_files.zip
 # claude 项目配置目录
 .claude/
 !.claude/settings.local.json
+
+# Trae 项目文档目录（保留 .md 文档）
+.trae/
+!.trae/**/*.md
+
+# 完整的数据库文件（包含所有数据）
+data.db
