@@ -170,4 +170,6 @@ function createTables(db: Database.Database): void {
   try { db.exec('ALTER TABLE horizontal_plans ADD COLUMN lesson_date TEXT'); } catch (e) { /* column already exists */ }
   try { db.exec('ALTER TABLE schools ADD COLUMN rules TEXT'); } catch (e) { /* column already exists */ }
   try { db.exec('ALTER TABLE timetables ADD COLUMN grade_id INTEGER DEFAULT NULL'); } catch (e) { /* column already exists */ }
+  // 为已有横向备课方案回填 lesson_date（用 created_at 的日期部分）
+  try { db.exec("UPDATE horizontal_plans SET lesson_date = date(created_at) WHERE lesson_date IS NULL"); } catch (e) { /* ignore */ }
 }

@@ -223,7 +223,7 @@ const Timetable: React.FC = () => {
   const getFirstChar = (name: string) => name ? name.charAt(0) : '?';
 
   const isPlanInCurrentWeek = (plan: HorizontalPlan): boolean => {
-    if (!plan.lessonDate) return true; // legacy plan without date
+    if (!plan.lessonDate) return false; // 无日期则视为不在当前周
     const planTime = dayjs(plan.lessonDate).valueOf();
     const weekStart = dayjs(weekMonday).valueOf();
     const weekEnd = dayjs(weekMonday).add(6, 'day').endOf('day').valueOf();
@@ -240,7 +240,10 @@ const Timetable: React.FC = () => {
     const timeStr = period ? `${period.name} ${period.time}` : '';
     const lessonDate = dayjs(weekMonday).add(dayOfWeek - 1, 'day').format('YYYY-MM-DD');
 
-    const plannedEntry = entries.find(e => horizontalPlans.has(e.id));
+    const plannedEntry = entries.find(e => {
+      const plan = horizontalPlans.get(e.id);
+      return plan && isPlanInCurrentWeek(plan);
+    });
     if (plannedEntry) {
       const params = new URLSearchParams();
       params.set('timetableId', plannedEntry.id);
@@ -250,6 +253,20 @@ const Timetable: React.FC = () => {
       navigate(`/horizontal-plans/view?${params.toString()}`);
       return;
     }
+
+    // 有旧方案（不同日期）→ 编辑，复用旧方案内容并更新日期
+    const anyExisting = entries.find(e => horizontalPlans.has(e.id));
+    if (anyExisting) {
+      const params = new URLSearchParams();
+      params.set('timetableId', anyExisting.id);
+      params.set('dayOfWeek', String(dayOfWeek));
+      params.set('date', lessonDate);
+      if (timeStr) params.set('time', encodeURIComponent(timeStr));
+      navigate(`/horizontal-plans/edit?${params.toString()}`);
+      return;
+    }
+
+    // 无任何方案 → 新建
 
     const firstEntry = entries[0];
     const params = new URLSearchParams();

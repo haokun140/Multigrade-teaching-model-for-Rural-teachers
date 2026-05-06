@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Plus, Save, Users, BookOpen, Clock, Calendar, GripVertical, ChevronDown, ChevronUp, Trash2, X, Check, Search } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import dayjs from 'dayjs';
 import { useAuthStore } from '../store';
 import { api } from '../api';
 import { Class as ClassType, Subject, LessonStep, LessonPlan, CurriculumConfig } from '../types';
@@ -991,7 +992,15 @@ const HorizontalPlanEdit: React.FC = () => {
                     <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
                     <span className="text-gray-500">日期：</span>
                     <span className="font-medium text-gray-900">
-                      {dayOfWeek ? formatDateFromDayOfWeek(dayOfWeek) : '-'}
+                      {(() => {
+                        const dateParam = searchParams.get('date');
+                        if (dateParam) {
+                          const d = dayjs(dateParam);
+                          const dayName = DAY_NAMES[d.day() === 0 ? 6 : d.day() - 1];
+                          return `${d.format('M月D日')}（${dayName}）`;
+                        }
+                        return dayOfWeek ? formatDateFromDayOfWeek(dayOfWeek) : '-';
+                      })()}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
