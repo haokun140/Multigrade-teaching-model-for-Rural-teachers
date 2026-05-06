@@ -96,3 +96,41 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# ============================================
+# 复式教育备课系统 - 特定忽略规则
+# ============================================
+
+# 文档文件（Markdown）
+*.md
+!README.md
+!.trae/**/*.md
+
+# 测试截图
+test_screenshots/
+
+# Excel 教材列表文件
+*.xlsx
+*.xls
+
+# 测试文件
+test_*.ts
+test_*.py
+test_debug*.py
+test_diagnostic.py
+test_horizontal_plan.py
+
+# 数据库临时文件（SQLite）
+*.db-shm
+*.db-wal
+
+# 测试用户创建脚本
+create-test-user.ts
+test-login.ts
+
+# 打包备份文件
+modified_files.zip
+
+# claude 项目配置目录
+.claude/
+!.claude/settings.local.json
