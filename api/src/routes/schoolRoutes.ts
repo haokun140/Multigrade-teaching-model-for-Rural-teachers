@@ -9,9 +9,9 @@ router.post('/join', authMiddleware, schoolController.joinSchool);
 router.get('/', authMiddleware, schoolController.getSchool);
 router.get('/subjects', authMiddleware, schoolController.getSubjects);
 router.get('/time-configs', authMiddleware, schoolController.getTimeConfigs);
+router.put('/time-configs', authMiddleware, schoolController.updateTimeConfigs);
 router.get('/curriculum-configs', authMiddleware, schoolController.getCurriculumConfigs);
 router.post('/curriculum-configs', authMiddleware, schoolController.createCurriculumConfig);
 router.put('/curriculum-configs/:id', authMiddleware, schoolController.updateCurriculumConfig);
 router.delete('/curriculum-configs/:id', authMiddleware, schoolController.deleteCurriculumConfig);
-
 export default router;

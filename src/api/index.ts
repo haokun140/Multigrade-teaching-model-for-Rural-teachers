@@ -44,7 +44,6 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers
     };
 
     const token = this.getToken();
@@ -54,10 +53,13 @@ class ApiClient {
 
     const response = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
-      headers
+      headers: {
+        ...headers,
+        ...(options.headers as Record<string, string> | undefined),
+      }
     });
 
-    return await response.json();
+    return await response.json() as ApiResponse<T>;
   }
 
   // Auth endpoints
@@ -69,7 +71,7 @@ class ApiClient {
   }
 
   async register(data: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
-    const result = await this.request('/api/auth/register', {
+    const result: ApiResponse<AuthResponse> = await this.request('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(data)
     });
@@ -80,7 +82,7 @@ class ApiClient {
   }
 
   async login(data: LoginRequest): Promise<ApiResponse<AuthResponse>> {
-    const result = await this.request('/api/auth/login', {
+    const result: ApiResponse<AuthResponse> = await this.request('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(data)
     });
@@ -100,7 +102,7 @@ class ApiClient {
 
   // School endpoints
   async createSchool(data: any): Promise<ApiResponse<AuthResponse>> {
-    const result = await this.request('/api/schools/create', {
+    const result: ApiResponse<AuthResponse> = await this.request('/api/schools/create', {
       method: 'POST',
       body: JSON.stringify(data)
     });
@@ -111,7 +113,7 @@ class ApiClient {
   }
 
   async joinSchool(data: JoinSchoolRequest): Promise<ApiResponse<AuthResponse>> {
-    const result = await this.request('/api/schools/join', {
+    const result: ApiResponse<AuthResponse> = await this.request('/api/schools/join', {
       method: 'POST',
       body: JSON.stringify(data)
     });
@@ -131,6 +133,13 @@ class ApiClient {
 
   async getTimeConfigs(): Promise<ApiResponse<any[]>> {
     return this.request('/api/schools/time-configs');
+  }
+
+  async updateTimeConfigs(timeSlots: any[]): Promise<ApiResponse<any>> {
+    return this.request('/api/schools/time-configs', {
+      method: 'PUT',
+      body: JSON.stringify({ timeSlots })
+    });
   }
 
   // Curriculum Config endpoints
@@ -207,6 +216,19 @@ class ApiClient {
   async deleteTimetableEntry(id: string): Promise<ApiResponse<any>> {
     return this.request(`/api/timetables/${id}`, {
       method: 'DELETE'
+    });
+  }
+
+  async updateWeeklyTimetable(classId: string, entries: Array<{
+    dayOfWeek: number;
+    periodIndex: number;
+    subjectId: string;
+    lessonType: 'new' | 'review' | 'practice';
+    gradeId?: number;
+  }>): Promise<ApiResponse<TimetableEntry[]>> {
+    return this.request(`/api/timetables/weekly/${classId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ classId, entries })
     });
   }
 

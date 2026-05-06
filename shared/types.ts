@@ -32,6 +32,7 @@ export interface School {
   region: string;
   type: 'primary' | 'middle' | 'nine-year';
   inviteCode: string;
+  rules?: string;
   createdAt: string;
 }
 
@@ -74,11 +75,12 @@ export interface Subject {
 export interface TimetableEntry {
   id: string;
   classId: string;
-  dayOfWeek: number; // 0-6, 0=周一
+  dayOfWeek: number; // 1-5, 1=周一
   periodIndex: number;
   subjectId: string;
   teacherId: string;
   lessonType: 'new' | 'review' | 'practice';
+  gradeId?: number;
   hasPrepared?: boolean;
 }
 
@@ -88,6 +90,18 @@ export interface CreateTimetableRequest {
   periodIndex: number;
   subjectId: string;
   lessonType: 'new' | 'review' | 'practice';
+  gradeId?: number;
+}
+
+export interface UpdateWeeklyTimetableRequest {
+  classId: string;
+  entries: Array<{
+    dayOfWeek: number;
+    periodIndex: number;
+    subjectId: string;
+    lessonType: 'new' | 'review' | 'practice';
+    gradeId?: number;
+  }>;
 }
 
 // 纵向备课相关类型
@@ -112,11 +126,12 @@ export interface LessonStep {
 export interface LessonPlan {
   id: string;
   schoolId: string;
-  classId: string;
+  classId: string | null;
   subjectId: string;
   gradeId: number;
   unit: string;
   title: string;
+  version?: string;
   volume?: string;
   objectives: LessonObjective[];
   steps: LessonStep[];
@@ -128,18 +143,24 @@ export interface LessonPlan {
 }
 
 export interface CreateLessonPlanRequest {
-  classId: string;
+  classId?: string;
   subjectId: string;
   gradeId: number;
   unit: string;
   title: string;
+  version?: string;
   volume?: string;
   timetableId?: string;
+  objectives?: LessonObjective[];
+  steps?: LessonStep[];
+  totalDuration?: number;
+  status?: 'draft' | 'completed';
 }
 
 export interface UpdateLessonPlanRequest {
   unit?: string;
   title?: string;
+  version?: string;
   volume?: string;
   objectives?: LessonObjective[];
   steps?: LessonStep[];
@@ -176,8 +197,10 @@ export interface HorizontalPlan {
   timetableId: string;
   gradeSubjects: Array<{ gradeId: number; subjectId: string }>;
   lessonDuration: number;
+  lessonDate?: string;
   tracks: TimelineTrack[];
   interactions: Interaction[];
+  homework: Array<{ gradeId: number; content: string }>;
   status: 'draft' | 'completed';
   createdAt: string;
   updatedAt: string;
@@ -188,12 +211,15 @@ export interface CreateHorizontalPlanRequest {
   timetableId: string;
   gradeSubjects: Array<{ gradeId: number; subjectId: string }>;
   lessonDuration: number;
+  lessonDate?: string;
 }
 
 export interface UpdateHorizontalPlanRequest {
   tracks?: TimelineTrack[];
   interactions?: Interaction[];
+  homework?: Array<{ gradeId: number; content: string }>;
   status?: 'draft' | 'completed';
+  lessonDate?: string;
 }
 
 // 进度统计类型

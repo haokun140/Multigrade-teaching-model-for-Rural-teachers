@@ -1,18 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store';
+import { useAuthStore, useAppStore } from '../store';
 import { api } from '../api';
 import { CreateClassRequest } from '../types';
 
-const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'];
+function getAvailableGrades(schoolType?: string): { id: number; label: string }[] {
+  const allLabels = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '初一', '初二', '初三'];
+  let ids: number[];
+  switch (schoolType) {
+    case 'middle': ids = [7, 8, 9]; break;
+    case 'nine-year': ids = [1, 2, 3, 4, 5, 6, 7, 8, 9]; break;
+    default: ids = [1, 2, 3, 4, 5, 6]; break;
+  }
+  return ids.map(id => ({ id, label: allLabels[id - 1] }));
+}
 
 const CreateClass: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { school } = useAppStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
+  const grades = useMemo(() => getAvailableGrades(school?.type), [school?.type]);
+
   const [formData, setFormData] = useState<CreateClassRequest>({
     schoolId: user?.schoolId || '',
     name: '',
@@ -23,14 +35,19 @@ const CreateClass: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    
+
     if (!formData.name.trim()) {
       setError('请输入班级名称');
       return;
     }
-    
+
     if (formData.gradeIds.length === 0) {
       setError('请至少选择一个年级');
+      return;
+    }
+
+    if (formData.type === 'composite' && formData.gradeIds.length < 2) {
+      setError('复式班至少选择2个年级');
       return;
     }
 
@@ -49,13 +66,21 @@ const CreateClass: React.FC = () => {
     }
   };
 
-  const handleGradeToggle = (gradeId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      gradeIds: prev.gradeIds.includes(gradeId)
-        ? prev.gradeIds.filter(id => id !== gradeId)
-        : [...prev.gradeIds, gradeId]
-    }));
+  const handleGradeSelect = (gradeId: number) => {
+    setFormData(prev => {
+      if (prev.type === 'single') {
+        // 单式班：单选
+        return { ...prev, gradeIds: [gradeId] };
+      }
+      // 复式班：多选
+      const isSelected = prev.gradeIds.includes(gradeId);
+      return {
+        ...prev,
+        gradeIds: isSelected
+          ? prev.gradeIds.filter(id => id !== gradeId)
+          : [...prev.gradeIds, gradeId]
+      };
+    });
   };
 
   return (
@@ -111,7 +136,11 @@ const CreateClass: React.FC = () => {
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setFormData(prev => ({ ...prev, type: 'single' }))}
+                onClick={() => setFormData(prev => ({
+                  ...prev,
+                  type: 'single',
+                  gradeIds: prev.gradeIds.length > 1 ? [prev.gradeIds[0]] : prev.gradeIds
+                }))}
                 className={`flex-1 py-3 px-4 rounded-lg border-2 font-medium transition-colors ${
                   formData.type === 'single'
                     ? 'border-blue-500 bg-blue-50 text-blue-700'
@@ -122,7 +151,10 @@ const CreateClass: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setFormData(prev => ({ ...prev, type: 'composite' }))}
+                onClick={() => setFormData(prev => ({
+                  ...prev,
+                  type: 'composite'
+                }))}
                 className={`flex-1 py-3 px-4 rounded-lg border-2 font-medium transition-colors ${
                   formData.type === 'composite'
                     ? 'border-blue-500 bg-blue-50 text-blue-700'
@@ -138,22 +170,27 @@ const CreateClass: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               包含年级
             </label>
+            {formData.type === 'single' && (
+              <p className="text-xs text-gray-500 mb-2">单式班仅可选择1个年级</p>
+            )}
+            {formData.type === 'composite' && (
+              <p className="text-xs text-orange-500 mb-2">复式班至少选择2个年级</p>
+            )}
             <div className="grid grid-cols-2 gap-2">
-              {GRADES.map((grade, index) => {
-                const gradeId = (index + 1).toString();
-                const isSelected = formData.gradeIds.includes(gradeId);
+              {grades.map(({ id, label }) => {
+                const isSelected = formData.gradeIds.includes(id);
                 return (
                   <button
-                    key={gradeId}
+                    key={id}
                     type="button"
-                    onClick={() => handleGradeToggle(gradeId)}
+                    onClick={() => handleGradeSelect(id)}
                     className={`py-3 px-4 rounded-lg border-2 text-sm font-medium transition-colors ${
                       isSelected
                         ? 'border-blue-500 bg-blue-50 text-blue-700'
                         : 'border-gray-200 text-gray-600 hover:border-gray-300'
                     }`}
                   >
-                    {grade}
+                    {label}
                   </button>
                 );
               })}

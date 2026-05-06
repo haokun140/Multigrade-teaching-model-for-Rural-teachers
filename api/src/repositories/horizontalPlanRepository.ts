@@ -8,13 +8,14 @@ export const horizontalPlanRepository = {
     classId: string,
     timetableId: string,
     gradeSubjects: Array<{ gradeId: number; subjectId: string }>,
-    lessonDuration: number
+    lessonDuration: number,
+    lessonDate?: string
   ): HorizontalPlan => {
     const db = getDb();
     const stmt = db.prepare(
-      'INSERT INTO horizontal_plans (id, school_id, class_id, timetable_id, grade_subjects, lesson_duration) VALUES (?, ?, ?, ?, ?, ?)'
+      'INSERT INTO horizontal_plans (id, school_id, class_id, timetable_id, grade_subjects, lesson_duration, lesson_date) VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
-    stmt.run(id, schoolId, classId, timetableId, JSON.stringify(gradeSubjects), lessonDuration);
+    stmt.run(id, schoolId, classId, timetableId, JSON.stringify(gradeSubjects), lessonDuration, lessonDate || null);
     return horizontalPlanRepository.findById(id)!;
   },
 
@@ -30,8 +31,10 @@ export const horizontalPlanRepository = {
       timetableId: row.timetable_id,
       gradeSubjects: JSON.parse(row.grade_subjects),
       lessonDuration: row.lesson_duration,
+      lessonDate: row.lesson_date || undefined,
       tracks: row.tracks ? JSON.parse(row.tracks) : [],
       interactions: row.interactions ? JSON.parse(row.interactions) : [],
+      homework: row.homework ? JSON.parse(row.homework) : [],
       status: row.status,
       createdAt: row.created_at,
       updatedAt: row.updated_at
@@ -50,8 +53,10 @@ export const horizontalPlanRepository = {
       timetableId: row.timetable_id,
       gradeSubjects: JSON.parse(row.grade_subjects),
       lessonDuration: row.lesson_duration,
+      lessonDate: row.lesson_date || undefined,
       tracks: row.tracks ? JSON.parse(row.tracks) : [],
       interactions: row.interactions ? JSON.parse(row.interactions) : [],
+      homework: row.homework ? JSON.parse(row.homework) : [],
       status: row.status,
       createdAt: row.created_at,
       updatedAt: row.updated_at
@@ -71,9 +76,17 @@ export const horizontalPlanRepository = {
       updates.push('interactions = ?');
       params.push(JSON.stringify(data.interactions));
     }
+    if (data.homework !== undefined) {
+      updates.push('homework = ?');
+      params.push(JSON.stringify(data.homework));
+    }
     if (data.status !== undefined) {
       updates.push('status = ?');
       params.push(data.status);
+    }
+    if (data.lessonDate !== undefined) {
+      updates.push('lesson_date = ?');
+      params.push(data.lessonDate);
     }
 
     if (updates.length > 0) {

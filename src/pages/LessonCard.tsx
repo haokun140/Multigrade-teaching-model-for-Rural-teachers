@@ -71,7 +71,7 @@ const LessonCard: React.FC = () => {
   }
 
   const subject = getSubjectById(lessonPlan.subjectId);
-  const grade = GRADES[parseInt(lessonPlan.gradeId) - 1];
+  const grade = GRADES[lessonPlan.gradeId - 1];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -123,7 +123,7 @@ const LessonCard: React.FC = () => {
                       <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-medium mt-0.5">
                         {idx + 1}
                       </div>
-                      <p className="text-gray-700">{objective}</p>
+                      <p className="text-gray-700">{objective.content}</p>
                     </li>
                   ))}
                 </ul>

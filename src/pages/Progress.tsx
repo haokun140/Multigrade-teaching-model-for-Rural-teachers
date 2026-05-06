@@ -243,7 +243,7 @@ const Progress: React.FC = () => {
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      plan.status === 'published' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'
+                      plan.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'
                     }`}>
                       <BookOpen className="w-5 h-5" />
                     </div>
@@ -255,11 +255,11 @@ const Progress: React.FC = () => {
                     </div>
                   </div>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    plan.status === 'published'
+                    plan.status === 'completed'
                       ? 'bg-green-100 text-green-700'
                       : 'bg-yellow-100 text-yellow-700'
                   }`}>
-                    {plan.status === 'published' ? '已发布' : '草稿'}
+                    {plan.status === 'completed' ? '已发布' : '草稿'}
                   </span>
                 </div>
               );

@@ -41,7 +41,7 @@ export const horizontalPlanController = {
       return res.status(401).json({ success: false, error: '未认证或未加入学校' });
     }
 
-    const { classId, timetableId, gradeSubjects, lessonDuration }: CreateHorizontalPlanRequest = req.body;
+    const { classId, timetableId, gradeSubjects, lessonDuration, lessonDate }: CreateHorizontalPlanRequest = req.body;
     if (!classId || !timetableId || !gradeSubjects || lessonDuration === undefined) {
       return res.status(400).json({ success: false, error: '请填写完整信息' });
     }
@@ -53,7 +53,8 @@ export const horizontalPlanController = {
       classId,
       timetableId,
       gradeSubjects,
-      lessonDuration
+      lessonDuration,
+      lessonDate
     );
 
     return res.json({ success: true, data: plan });

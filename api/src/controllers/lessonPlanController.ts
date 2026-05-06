@@ -11,15 +11,25 @@ export const lessonPlanController = {
     }
 
     const { classId, gradeId, subjectId } = req.query;
-    if (!classId || !gradeId || !subjectId) {
-      return res.status(400).json({ success: false, error: '请提供班级、年级和学科ID' });
+    if (!gradeId || !subjectId) {
+      return res.status(400).json({ success: false, error: '请提供年级和学科ID' });
     }
 
-    const plans = lessonPlanRepository.findByClassAndGradeAndSubject(
-      classId as string,
-      Number(gradeId),
-      subjectId as string
-    );
+    let plans;
+    if (classId) {
+      plans = lessonPlanRepository.findByClassAndGradeAndSubject(
+        classId as string,
+        Number(gradeId),
+        subjectId as string
+      );
+    } else {
+      // 纵向备课场景：按学校、年级、学科查询，不按班级过滤
+      plans = lessonPlanRepository.findBySchoolGradeAndSubject(
+        req.user.schoolId,
+        Number(gradeId),
+        subjectId as string
+      );
+    }
 
     return res.json({ success: true, data: plans });
   },
@@ -43,8 +53,8 @@ export const lessonPlanController = {
       return res.status(401).json({ success: false, error: '未认证或未加入学校' });
     }
 
-    const { classId, subjectId, gradeId, unit, title, volume, timetableId }: CreateLessonPlanRequest = req.body;
-    if (!classId || !subjectId || gradeId === undefined || !unit || !title) {
+    const { classId, subjectId, gradeId, unit, title, version, volume, timetableId, objectives, steps, totalDuration, status } = req.body;
+    if (!subjectId || gradeId === undefined || !unit || !title) {
       return res.status(400).json({ success: false, error: '请填写完整信息' });
     }
 
@@ -58,7 +68,12 @@ export const lessonPlanController = {
       unit,
       title,
       volume,
-      timetableId
+      timetableId,
+      objectives,
+      steps,
+      totalDuration,
+      status,
+      version
     );
 
     return res.json({ success: true, data: plan });

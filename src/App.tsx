@@ -7,13 +7,15 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import SchoolSetup from './pages/SchoolSetup';
 import Timetable from './pages/Timetable';
+import TimetableEditor from './pages/TimetableEditor';
 import ClassList from './pages/ClassList';
 import CreateClass from './pages/CreateClass';
 import LessonPlanList from './pages/LessonPlanList';
 import LessonPlanEdit from './pages/LessonPlanEdit';
 import HorizontalPlanEdit from './pages/HorizontalPlanEdit';
+import HorizontalPlanView from './pages/HorizontalPlanView';
+import HorizontalPlanPreview from './pages/HorizontalPlanPreview';
 import LessonCard from './pages/LessonCard';
-import Progress from './pages/Progress';
 import Settings from './pages/Settings';
 import CurriculumConfigManager from './pages/CurriculumConfigManager';
 import './index.css';
@@ -106,6 +108,16 @@ export default function App() {
             }
           />
           <Route
+            path="/timetable/edit"
+            element={
+              <ProtectedRoute>
+                <SchoolRequiredRoute>
+                  <TimetableEditor />
+                </SchoolRequiredRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/classes"
             element={
               <ProtectedRoute>
@@ -166,6 +178,36 @@ export default function App() {
             }
           />
           <Route
+            path="/horizontal-plans/edit"
+            element={
+              <ProtectedRoute>
+                <SchoolRequiredRoute>
+                  <HorizontalPlanEdit />
+                </SchoolRequiredRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/horizontal-plans/view"
+            element={
+              <ProtectedRoute>
+                <SchoolRequiredRoute>
+                  <HorizontalPlanView />
+                </SchoolRequiredRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/horizontal-plans/preview"
+            element={
+              <ProtectedRoute>
+                <SchoolRequiredRoute>
+                  <HorizontalPlanPreview />
+                </SchoolRequiredRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/horizontal-plans/:id"
             element={
               <ProtectedRoute>
@@ -181,16 +223,6 @@ export default function App() {
               <ProtectedRoute>
                 <SchoolRequiredRoute>
                   <LessonCard />
-                </SchoolRequiredRoute>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/progress"
-            element={
-              <ProtectedRoute>
-                <SchoolRequiredRoute>
-                  <Progress />
                 </SchoolRequiredRoute>
               </ProtectedRoute>
             }

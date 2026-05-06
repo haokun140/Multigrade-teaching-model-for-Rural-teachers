@@ -1,14 +1,14 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Calendar, BookOpen, BarChart3, Settings } from 'lucide-react';
+import { Home, Calendar, BookOpen, Users, Settings } from 'lucide-react';
 
 export default function BottomNav() {
   const location = useLocation();
 
   const navItems = [
     { path: '/', label: '首页', icon: Home },
-    { path: '/timetable', label: '课程表', icon: Calendar },
+    { path: '/timetable', label: '课程规划', icon: Calendar },
     { path: '/lesson-plans', label: '备课', icon: BookOpen },
-    { path: '/progress', label: '进度', icon: BarChart3 },
+    { path: '/classes', label: '班级', icon: Users },
     { path: '/settings', label: '设置', icon: Settings }
   ];
 

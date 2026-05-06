@@ -140,6 +140,36 @@ export const schoolController = {
     return res.json({ success: true, data: timeConfigs });
   },
 
+  updateTimeConfigs: async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: '未认证' });
+    }
+
+    if (!req.user.schoolId) {
+      return res.status(400).json({ success: false, error: '未加入学校' });
+    }
+
+    const { timeSlots } = req.body;
+    if (!timeSlots || !Array.isArray(timeSlots)) {
+      return res.status(400).json({ success: false, error: '请提供有效的时间配置' });
+    }
+
+    // 删除旧配置，写入新配置
+    timeConfigRepository.deleteBySchool(req.user.schoolId);
+    timeSlots.forEach((slot: any) => {
+      timeConfigRepository.create(
+        slot.id || randomUUID(),
+        req.user.schoolId,
+        slot.type,
+        slot.startTime,
+        slot.endTime
+      );
+    });
+
+    const updatedConfigs = timeConfigRepository.findBySchool(req.user.schoolId);
+    return res.json({ success: true, data: updatedConfigs });
+  },
+
   getCurriculumConfigs: async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ success: false, error: '未认证' });
@@ -217,7 +247,7 @@ export const schoolController = {
 
     const { id } = req.params;
     curriculumConfigRepository.delete(id);
-    
+
     return res.json({ success: true, data: null });
   }
 };

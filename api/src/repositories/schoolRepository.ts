@@ -34,6 +34,7 @@ export const schoolRepository = {
       region: row.region,
       type: row.type,
       inviteCode: row.invite_code,
+      rules: row.rules || undefined,
       createdAt: row.created_at
     };
   },
@@ -49,7 +50,25 @@ export const schoolRepository = {
       region: row.region,
       type: row.type,
       inviteCode: row.invite_code,
+      rules: row.rules || undefined,
       createdAt: row.created_at
     };
+  },
+
+  update: (id: string, data: { name?: string; region?: string; type?: string; rules?: string }): School | null => {
+    const db = getDb();
+    const fields: string[] = [];
+    const params: any[] = [];
+
+    if (data.name !== undefined) { fields.push('name = ?'); params.push(data.name); }
+    if (data.region !== undefined) { fields.push('region = ?'); params.push(data.region); }
+    if (data.type !== undefined) { fields.push('type = ?'); params.push(data.type); }
+    if (data.rules !== undefined) { fields.push('rules = ?'); params.push(data.rules); }
+
+    if (fields.length === 0) return schoolRepository.findById(id);
+
+    params.push(id);
+    db.prepare(`UPDATE schools SET ${fields.join(', ')} WHERE id = ?`).run(...params);
+    return schoolRepository.findById(id);
   }
 };

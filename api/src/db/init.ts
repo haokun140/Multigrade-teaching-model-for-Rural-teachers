@@ -75,6 +75,7 @@ function createTables(db: Database.Database): void {
       class_id TEXT NOT NULL,
       day_of_week INTEGER NOT NULL CHECK(day_of_week BETWEEN 0 AND 6),
       period_index INTEGER NOT NULL,
+      grade_id INTEGER DEFAULT NULL,
       subject_id TEXT NOT NULL,
       teacher_id TEXT NOT NULL,
       lesson_type TEXT DEFAULT 'new' CHECK(lesson_type IN ('new', 'review', 'practice')),
@@ -87,7 +88,7 @@ function createTables(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS lesson_plans (
       id TEXT PRIMARY KEY,
       school_id TEXT NOT NULL,
-      class_id TEXT NOT NULL,
+      class_id TEXT,
       subject_id TEXT NOT NULL,
       grade_id INTEGER NOT NULL,
       unit TEXT NOT NULL,
@@ -114,6 +115,7 @@ function createTables(db: Database.Database): void {
       lesson_duration INTEGER NOT NULL,
       tracks TEXT,
       interactions TEXT,
+      homework TEXT,
       status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'completed')),
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -162,4 +164,10 @@ function createTables(db: Database.Database): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_curriculum_configs_school ON curriculum_configs(school_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_curriculum_configs_subject ON curriculum_configs(subject_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_curriculum_configs_grade ON curriculum_configs(grade_id)');
+
+  // 迁移：为已有表添加新列
+  try { db.exec('ALTER TABLE horizontal_plans ADD COLUMN homework TEXT'); } catch (e) { /* column already exists */ }
+  try { db.exec('ALTER TABLE horizontal_plans ADD COLUMN lesson_date TEXT'); } catch (e) { /* column already exists */ }
+  try { db.exec('ALTER TABLE schools ADD COLUMN rules TEXT'); } catch (e) { /* column already exists */ }
+  try { db.exec('ALTER TABLE timetables ADD COLUMN grade_id INTEGER DEFAULT NULL'); } catch (e) { /* column already exists */ }
 }

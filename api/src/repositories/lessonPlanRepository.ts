@@ -5,19 +5,24 @@ export const lessonPlanRepository = {
   create: (
     id: string,
     schoolId: string,
-    classId: string,
+    classId: string | null,
     subjectId: string,
     gradeId: number,
     unit: string,
     title: string,
     volume: string | null = null,
-    timetableId: string | null = null
+    timetableId: string | null = null,
+    objectives: any[] = [],
+    steps: any[] = [],
+    totalDuration: number = 0,
+    status: string = 'draft',
+    version: string | null = null
   ): LessonPlan => {
     const db = getDb();
     const stmt = db.prepare(
-      'INSERT INTO lesson_plans (id, school_id, class_id, subject_id, grade_id, unit, title, volume, timetable_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO lesson_plans (id, school_id, class_id, subject_id, grade_id, unit, title, volume, timetable_id, objectives, steps, total_duration, status, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    stmt.run(id, schoolId, classId, subjectId, gradeId, unit, title, volume, timetableId);
+    stmt.run(id, schoolId, classId || null, subjectId, gradeId, unit, title, volume, timetableId, JSON.stringify(objectives), JSON.stringify(steps), totalDuration, status, version);
     return lessonPlanRepository.findById(id)!;
   },
 
@@ -34,6 +39,7 @@ export const lessonPlanRepository = {
       gradeId: row.grade_id,
       unit: row.unit,
       title: row.title,
+      version: row.version,
       volume: row.volume,
       objectives: row.objectives ? JSON.parse(row.objectives) : [],
       steps: row.steps ? JSON.parse(row.steps) : [],
@@ -63,6 +69,37 @@ export const lessonPlanRepository = {
       gradeId: row.grade_id,
       unit: row.unit,
       title: row.title,
+      version: row.version,
+      volume: row.volume,
+      objectives: row.objectives ? JSON.parse(row.objectives) : [],
+      steps: row.steps ? JSON.parse(row.steps) : [],
+      totalDuration: row.total_duration,
+      status: row.status,
+      timetableId: row.timetable_id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+  },
+
+  findBySchoolGradeAndSubject: (
+    schoolId: string,
+    gradeId: number,
+    subjectId: string
+  ): LessonPlan[] => {
+    const db = getDb();
+    const stmt = db.prepare(
+      'SELECT * FROM lesson_plans WHERE school_id = ? AND grade_id = ? AND subject_id = ? ORDER BY updated_at DESC'
+    );
+    const rows = stmt.all(schoolId, gradeId, subjectId) as any[];
+    return rows.map(row => ({
+      id: row.id,
+      schoolId: row.school_id,
+      classId: row.class_id,
+      subjectId: row.subject_id,
+      gradeId: row.grade_id,
+      unit: row.unit,
+      title: row.title,
+      version: row.version,
       volume: row.volume,
       objectives: row.objectives ? JSON.parse(row.objectives) : [],
       steps: row.steps ? JSON.parse(row.steps) : [],
@@ -86,6 +123,10 @@ export const lessonPlanRepository = {
     if (data.title !== undefined) {
       updates.push('title = ?');
       params.push(data.title);
+    }
+    if (data.version !== undefined) {
+      updates.push('version = ?');
+      params.push(data.version);
     }
     if (data.volume !== undefined) {
       updates.push('volume = ?');
@@ -140,6 +181,7 @@ export const lessonPlanRepository = {
       gradeId: row.grade_id,
       unit: row.unit,
       title: row.title,
+      version: row.version,
       volume: row.volume,
       objectives: row.objectives ? JSON.parse(row.objectives) : [],
       steps: row.steps ? JSON.parse(row.steps) : [],

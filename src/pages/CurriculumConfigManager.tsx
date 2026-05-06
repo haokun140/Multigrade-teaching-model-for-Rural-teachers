@@ -1,14 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ArrowLeft, Plus, Edit, Trash2, X, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store';
+import { useAuthStore, useAppStore } from '../store';
 import { api } from '../api';
 import { CurriculumConfig, Subject } from '../types';
 import BottomNav from '../components/BottomNav';
 
+function getAvailableGrades(schoolType?: string): { id: number; label: string }[] {
+  const allLabels = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '初一', '初二', '初三'];
+  let ids: number[];
+  switch (schoolType) {
+    case 'middle': ids = [7, 8, 9]; break;
+    case 'nine-year': ids = [1, 2, 3, 4, 5, 6, 7, 8, 9]; break;
+    default: ids = [1, 2, 3, 4, 5, 6]; break;
+  }
+  return ids.map(id => ({ id, label: allLabels[id - 1] }));
+}
+
 const CurriculumConfigManager: React.FC = () => {
   const navigate = useNavigate();
   const { user, token } = useAuthStore();
+  const { school } = useAppStore();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [configs, setConfigs] = useState<CurriculumConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,13 +28,21 @@ const CurriculumConfigManager: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingConfig, setEditingConfig] = useState<CurriculumConfig | null>(null);
 
-  const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'];
+  // Filter state
+  const [filterSubjectId, setFilterSubjectId] = useState('');
+  const [filterGradeId, setFilterGradeId] = useState('');
+  const [showSubjectFilter, setShowSubjectFilter] = useState(false);
+  const [showGradeFilter, setShowGradeFilter] = useState(false);
+
+  const grades = useMemo(() => getAvailableGrades(school?.type), [school?.type]);
+
+  const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '初一', '初二', '初三'];
   const DEFAULT_VERSIONS = ['人教版', '北师大版', '苏教版', '沪教版', '其他'];
   const DEFAULT_VOLUMES = ['上册', '下册', '全一册'];
 
   const [formData, setFormData] = useState({
     subjectId: '',
-    gradeId: '',
+    selectedGradeIds: [] as number[],
     version: '',
     volumes: [] as string[],
   });
@@ -52,7 +72,7 @@ const CurriculumConfigManager: React.FC = () => {
     setEditingConfig(null);
     setFormData({
       subjectId: '',
-      gradeId: '',
+      selectedGradeIds: [],
       version: '',
       volumes: [],
     });
@@ -63,7 +83,7 @@ const CurriculumConfigManager: React.FC = () => {
     setEditingConfig(config);
     setFormData({
       subjectId: config.subjectId,
-      gradeId: config.gradeId.toString(),
+      selectedGradeIds: [config.gradeId],
       version: config.version,
       volumes: [...config.volumes],
     });
@@ -100,7 +120,7 @@ const CurriculumConfigManager: React.FC = () => {
   };
 
   const handleSaveConfig = async () => {
-    if (!formData.subjectId || !formData.gradeId || !formData.version) {
+    if (!formData.subjectId || formData.selectedGradeIds.length === 0 || !formData.version) {
       alert('请填写完整信息');
       return;
     }
@@ -118,12 +138,15 @@ const CurriculumConfigManager: React.FC = () => {
           volumes: formData.volumes,
         });
       } else {
-        await api.createCurriculumConfig({
-          subjectId: formData.subjectId,
-          gradeId: parseInt(formData.gradeId),
-          version: formData.version,
-          volumes: formData.volumes,
-        });
+        // 多年级选择，按年级拆分生成多条教材数据
+        for (const gradeId of formData.selectedGradeIds) {
+          await api.createCurriculumConfig({
+            subjectId: formData.subjectId,
+            gradeId,
+            version: formData.version,
+            volumes: formData.volumes,
+          });
+        }
       }
 
       setShowModal(false);
@@ -137,6 +160,17 @@ const CurriculumConfigManager: React.FC = () => {
   };
 
   const getSubjectById = (subjectId: string) => subjects.find(s => s.id === subjectId);
+
+  const filteredConfigs = useMemo(() => {
+    return configs.filter(c => {
+      if (filterSubjectId && c.subjectId !== filterSubjectId) return false;
+      if (filterGradeId && c.gradeId !== parseInt(filterGradeId)) return false;
+      return true;
+    });
+  }, [configs, filterSubjectId, filterGradeId]);
+
+  const selectedSubjectName = filterSubjectId ? getSubjectById(filterSubjectId)?.name : '';
+  const selectedGradeLabel = filterGradeId ? GRADES[parseInt(filterGradeId) - 1] : '';
 
   if (loading) {
     return (
@@ -160,7 +194,7 @@ const CurriculumConfigManager: React.FC = () => {
             >
               <ArrowLeft className="w-6 h-6" />
             </button>
-            <h1 className="text-lg font-bold text-gray-900">课程配置</h1>
+            <h1 className="text-lg font-bold text-gray-900">教材选择</h1>
             <button
               onClick={handleOpenAddModal}
               className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -172,9 +206,31 @@ const CurriculumConfigManager: React.FC = () => {
       </div>
 
       <div className="px-4 py-4 space-y-4">
-        {configs.length === 0 ? (
+        {/* Filter bar */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowSubjectFilter(true)}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
+              filterSubjectId ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {filterSubjectId ? selectedSubjectName : '全部学科'}
+            <ChevronDown className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setShowGradeFilter(true)}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
+              filterGradeId ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {filterGradeId ? selectedGradeLabel : '全部年级'}
+            <ChevronDown className="w-4 h-4" />
+          </button>
+        </div>
+
+        {filteredConfigs.length === 0 ? (
           <div className="bg-white rounded-xl p-6 shadow-sm text-center">
-            <p className="text-gray-600 mb-4">还没有课程配置</p>
+            <p className="text-gray-600 mb-4">{configs.length === 0 ? '还没有教材配置' : '未找到匹配的教材'}</p>
             <button
               onClick={handleOpenAddModal}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -183,7 +239,7 @@ const CurriculumConfigManager: React.FC = () => {
             </button>
           </div>
         ) : (
-          configs.map(config => {
+          filteredConfigs.map(config => {
             const subject = getSubjectById(config.subjectId);
             const grade = GRADES[config.gradeId - 1];
             return (
@@ -218,18 +274,94 @@ const CurriculumConfigManager: React.FC = () => {
         )}
       </div>
 
+      {/* Subject filter modal */}
+      {showSubjectFilter && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]" onClick={() => setShowSubjectFilter(false)}>
+          <div className="bg-white rounded-2xl w-72 pt-5 pb-4 px-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4 px-1">
+              <h3 className="text-lg font-bold text-gray-900">选择学科</h3>
+              <button
+                onClick={() => setShowSubjectFilter(false)}
+                className="p-1 text-gray-400 hover:text-gray-600 -mr-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-1">
+              <button
+                onClick={() => { setFilterSubjectId(''); setShowSubjectFilter(false); }}
+                className={`w-full py-3 px-4 rounded-lg border-2 text-sm font-medium text-left transition-colors ${
+                  !filterSubjectId ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                全部学科
+              </button>
+              {subjects.map(subject => (
+                <button
+                  key={subject.id}
+                  onClick={() => { setFilterSubjectId(subject.id); setShowSubjectFilter(false); }}
+                  className={`w-full py-3 px-4 rounded-lg border-2 text-sm font-medium text-left transition-colors ${
+                    filterSubjectId === subject.id ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  {subject.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Grade filter modal */}
+      {showGradeFilter && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]" onClick={() => setShowGradeFilter(false)}>
+          <div className="bg-white rounded-2xl w-72 pt-5 pb-4 px-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4 px-1">
+              <h3 className="text-lg font-bold text-gray-900">选择年级</h3>
+              <button
+                onClick={() => setShowGradeFilter(false)}
+                className="p-1 text-gray-400 hover:text-gray-600 -mr-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-1">
+              <button
+                onClick={() => { setFilterGradeId(''); setShowGradeFilter(false); }}
+                className={`w-full py-3 px-4 rounded-lg border-2 text-sm font-medium text-left transition-colors ${
+                  !filterGradeId ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                全部年级
+              </button>
+              {grades.map(({ id, label }) => (
+                <button
+                  key={id}
+                  onClick={() => { setFilterGradeId(id.toString()); setShowGradeFilter(false); }}
+                  className={`w-full py-3 px-4 rounded-lg border-2 text-sm font-medium text-left transition-colors ${
+                    filterGradeId === id.toString() ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50">
-          <div className="bg-white rounded-t-2xl w-full max-w-lg p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]" onClick={() => setShowModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6 mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-gray-900">
-                {editingConfig ? '编辑配置' : '添加配置'}
+                {editingConfig ? '编辑教材' : '新增教材'}
               </h3>
               <button
                 onClick={() => setShowModal(false)}
                 className="p-2 text-gray-400 hover:text-gray-600"
               >
-                <ArrowLeft className="w-6 h-6 rotate-90" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -249,17 +381,33 @@ const CurriculumConfigManager: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">年级</label>
-                <select
-                  value={formData.gradeId}
-                  onChange={(e) => setFormData(prev => ({ ...prev, gradeId: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">请选择年级</option>
-                  {GRADES.map((grade, index) => (
-                    <option key={index + 1} value={(index + 1).toString()}>{grade}</option>
-                  ))}
-                </select>
+                <label className="block text-sm font-medium text-gray-700 mb-2">年级（可多选）</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {grades.map(({ id, label }) => {
+                    const isSelected = formData.selectedGradeIds.includes(id);
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({
+                            ...prev,
+                            selectedGradeIds: isSelected
+                              ? prev.selectedGradeIds.filter(g => g !== id)
+                              : [...prev.selectedGradeIds, id],
+                          }));
+                        }}
+                        className={`py-2 px-4 rounded-lg border-2 text-sm font-medium transition-colors ${
+                          isSelected
+                            ? 'border-blue-500 bg-blue-50 text-blue-700'
+                            : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div>
