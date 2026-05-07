@@ -5,8 +5,7 @@ import { useAuthStore } from '../store';
 import { api } from '../api';
 import { LessonPlan, Subject } from '../types';
 import BottomNav from '../components/BottomNav';
-
-const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '初一', '初二', '初三'];
+import { ALL_GRADE_LABELS } from '../lib/grades';
 
 interface FilterOption {
   value: string;
@@ -104,7 +103,7 @@ const LessonPlanList: React.FC = () => {
 
   // Filter options for pickers
   const subjectOptions: FilterOption[] = subjects.map(s => ({ value: s.id, label: s.name }));
-  const gradeOptions: FilterOption[] = GRADES.map((g, i) => ({ value: String(i + 1), label: g }));
+  const gradeOptions: FilterOption[] = ALL_GRADE_LABELS.map((g, i) => ({ value: String(i + 1), label: g }));
   const versionOptions: FilterOption[] = versions.map(v => ({ value: v, label: v }));
   const volumeOptions: FilterOption[] = volumes.map(v => ({ value: v, label: v }));
 
@@ -251,7 +250,7 @@ const LessonPlanList: React.FC = () => {
               ))}
               {filterGrade.map(gid => (
                 <span key={gid} className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded text-xs">
-                  年级: {GRADES[parseInt(gid) - 1]}
+                  年级: {ALL_GRADE_LABELS[parseInt(gid) - 1]}
                   <button onClick={() => setFilterGrade(prev => prev.filter(v => v !== gid))}><X className="w-3 h-3" /></button>
                 </span>
               ))}
@@ -292,7 +291,7 @@ const LessonPlanList: React.FC = () => {
             {Object.entries(groupedPlans).map(([key, plans]) => {
               const firstPlan = plans[0];
               const subject = getSubjectById(firstPlan.subjectId);
-              const grade = GRADES[firstPlan.gradeId - 1];
+              const grade = ALL_GRADE_LABELS[firstPlan.gradeId - 1];
               return (
                 <div key={key} className="bg-white rounded-xl shadow-sm overflow-hidden">
                   <div className="px-4 py-3 bg-gray-50 border-b flex items-center justify-between">

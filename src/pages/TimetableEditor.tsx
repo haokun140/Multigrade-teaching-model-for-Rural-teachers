@@ -1,13 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Users, BookOpen, X } from 'lucide-react';
+import { ArrowLeft, Save, Users, BookOpen, X, ChevronDown } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store';
 import { api } from '../api';
 import { Class as ClassType, Subject, TimetableEntry } from '../types';
+import { ALL_GRADE_LABELS } from '../lib/grades';
 import BottomNav from '../components/BottomNav';
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-const GRADE_NAMES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'];
+
+const TIME_TYPES = [
+  { value: 'morning-reading', label: '早读' },
+  { value: 'class', label: '上课' },
+  { value: 'self-study', label: '早/晚自习' },
+  { value: 'exercise', label: '健身操' },
+];
+
+const getTypeLabel = (type: string) => {
+  const typeObj = TIME_TYPES.find(t => t.value === type);
+  return typeObj ? typeObj.label : type;
+};
+
+const getTypeColor = (type: string) => {
+  switch (type) {
+    case 'morning-reading': return 'text-blue-600';
+    case 'class': return 'text-green-600';
+    case 'self-study': return 'text-yellow-600';
+    case 'exercise': return 'text-purple-600';
+    default: return 'text-gray-600';
+  }
+};
 
 function getWeekDates() {
   const today = new Date();
@@ -76,6 +98,7 @@ const TimetableEditor: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<ClassType | null>(null);
   const [activeGradeId, setActiveGradeId] = useState<number | null>(null);
   const [timeConfigs, setTimeConfigs] = useState<any[]>([]);
+  const [showClassModal, setShowClassModal] = useState(false);
 
   // gradeData: gradeId -> dayOfWeek -> periodIndex -> subjectId (string only)
   const [gradeData, setGradeData] = useState<Map<number, Map<number, Map<number, string>>>>(new Map());
@@ -96,6 +119,7 @@ const TimetableEditor: React.FC = () => {
   const loadData = async () => {
     try {
       const classId = searchParams.get('classId');
+      const savedClassId = localStorage.getItem('lastTimetableClassId');
       const [classesRes, subjectsRes, timeConfigsRes] = await Promise.all([
         api.getClasses(),
         api.getSubjects(),
@@ -111,44 +135,19 @@ const TimetableEditor: React.FC = () => {
       if (classId) {
         targetClass = clsList.find((c: ClassType) => c.id === classId) || null;
       }
+      if (!targetClass && savedClassId) {
+        targetClass = clsList.find((c: ClassType) => c.id === savedClassId) || null;
+      }
       if (!targetClass && clsList.length > 0) {
         targetClass = clsList[0];
       }
-      setSelectedClass(targetClass);
-
       if (targetClass) {
+        setSelectedClass(targetClass);
+        localStorage.setItem('lastTimetableClassId', targetClass.id);
         if (targetClass.gradeIds.length > 0) {
           setActiveGradeId(targetClass.gradeIds[0]);
         }
-
-        const res = await api.getTimetable(targetClass.id);
-        const entries = res.data || [];
-
-        const data = new Map<number, Map<number, Map<number, string>>>();
-        const ids = new Set<string>();
-
-        entries.forEach((entry: TimetableEntry) => {
-          ids.add(entry.id);
-          const gId = entry.gradeId || targetClass!.gradeIds[0];
-          if (!data.has(gId)) {
-            data.set(gId, new Map());
-          }
-          const dayMap = data.get(gId)!;
-          if (!dayMap.has(entry.dayOfWeek)) {
-            dayMap.set(entry.dayOfWeek, new Map());
-          }
-          const periodMap = dayMap.get(entry.dayOfWeek)!;
-          periodMap.set(entry.periodIndex, entry.subjectId);
-        });
-
-        targetClass.gradeIds.forEach(gId => {
-          if (!data.has(gId)) {
-            data.set(gId, new Map());
-          }
-        });
-
-        setGradeData(data);
-        setExistingEntryIds(ids);
+        await loadTimetableForClass(targetClass);
       }
 
       setLoading(false);
@@ -156,6 +155,51 @@ const TimetableEditor: React.FC = () => {
       console.error('加载数据失败:', error);
       setLoading(false);
     }
+  };
+
+  const loadTimetableForClass = async (cls: ClassType) => {
+    try {
+      const res = await api.getTimetable(cls.id);
+      const entries = res.data || [];
+
+      const data = new Map<number, Map<number, Map<number, string>>>();
+      const ids = new Set<string>();
+
+      entries.forEach((entry: TimetableEntry) => {
+        ids.add(entry.id);
+        const gId = entry.gradeId || cls.gradeIds[0];
+        if (!data.has(gId)) {
+          data.set(gId, new Map());
+        }
+        const dayMap = data.get(gId)!;
+        if (!dayMap.has(entry.dayOfWeek)) {
+          dayMap.set(entry.dayOfWeek, new Map());
+        }
+        const periodMap = dayMap.get(entry.dayOfWeek)!;
+        periodMap.set(entry.periodIndex, entry.subjectId);
+      });
+
+      cls.gradeIds.forEach(gId => {
+        if (!data.has(gId)) {
+          data.set(gId, new Map());
+        }
+      });
+
+      setGradeData(data);
+      setExistingEntryIds(ids);
+    } catch (error) {
+      console.error('加载课程表失败:', error);
+    }
+  };
+
+  const handleClassSwitch = (cls: ClassType) => {
+    setSelectedClass(cls);
+    localStorage.setItem('lastTimetableClassId', cls.id);
+    if (cls.gradeIds.length > 0) {
+      setActiveGradeId(cls.gradeIds[0]);
+    }
+    setShowClassModal(false);
+    loadTimetableForClass(cls);
   };
 
   const getSubjectValue = (gradeId: number, dayOfWeek: number, periodIndex: number) => {
@@ -265,13 +309,67 @@ const TimetableEditor: React.FC = () => {
             </button>
           </div>
 
-          {selectedClass && (
-            <div className="flex items-center gap-2 mt-3 text-sm text-gray-600">
-              <Users className="w-4 h-4 text-blue-600" />
-              <span>{selectedClass.name}</span>
-              {selectedClass.type === 'composite' && (
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">复式班</span>
-              )}
+          {classes.length > 0 && (
+            <div className="flex items-center gap-2 mt-3">
+              <button
+                onClick={() => setShowClassModal(true)}
+                className="flex-1 flex items-center justify-between px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-gray-400" />
+                  <span className="font-medium text-gray-900 text-sm">
+                    {selectedClass?.name || '选择班级'}
+                  </span>
+                  {selectedClass?.type === 'composite' && (
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">复式班</span>
+                  )}
+                </div>
+                <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+              </button>
+            </div>
+          )}
+
+          {showClassModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]" onClick={() => setShowClassModal(false)}>
+              <div className="bg-white rounded-2xl w-full max-w-lg p-6 mx-4" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">选择班级</h3>
+                  <button onClick={() => setShowClassModal(false)} className="p-2 text-gray-400 hover:text-gray-600">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {classes.map(cls => (
+                    <button
+                      key={cls.id}
+                      onClick={() => handleClassSwitch(cls)}
+                      className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-colors ${
+                        selectedClass?.id === cls.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-100 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${selectedClass?.id === cls.id ? 'bg-blue-500' : 'bg-gray-300'}`}>
+                          {cls.name.charAt(0)}
+                        </div>
+                        <div className="text-left">
+                          <div className="font-medium text-gray-900">{cls.name}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {cls.type === 'composite' ? '复式班' : '单式班'}
+                            <span className="ml-2">
+                              {cls.gradeIds.map(id => ALL_GRADE_LABELS[id - 1]).join('、')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      {selectedClass?.id === cls.id && (
+                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -287,7 +385,7 @@ const TimetableEditor: React.FC = () => {
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  {GRADE_NAMES[gid - 1]}
+                  {ALL_GRADE_LABELS[gid - 1]}
                 </button>
               ))}
             </div>
@@ -308,7 +406,6 @@ const TimetableEditor: React.FC = () => {
                     {DAYS.map((day, index) => (
                       <th key={index} className="px-2 py-3 text-sm font-medium text-gray-700 text-center">
                         <div>{day}</div>
-                        <div className="text-xs text-gray-400 font-normal">{weekDates[index]?.dateStr}</div>
                       </th>
                     ))}
                   </tr>
@@ -319,6 +416,7 @@ const TimetableEditor: React.FC = () => {
                       <td className="px-2 py-3 bg-gray-50">
                         <div className="text-xs text-gray-500 text-center">
                           <div className="font-medium text-gray-700">{period.name}</div>
+                          {period.type && <div className={`font-medium ${getTypeColor(period.type)}`}>{getTypeLabel(period.type)}</div>}
                           <div className="text-gray-400">{period.time}</div>
                         </div>
                       </td>
@@ -350,12 +448,15 @@ const TimetableEditor: React.FC = () => {
           <p className="text-xs text-gray-400 mt-3 text-center">
             点击时段选择学科，每个年级每个时段只能设置一个科目
           </p>
+          <p className="text-xs text-gray-400 mt-2 text-center">
+            如果时段配置不正确，可在设置页面操作【学校时间配置】
+          </p>
         </div>
       )}
 
       <SubjectPicker
         visible={!!pickerConfig}
-        title={pickerConfig ? `${GRADE_NAMES[pickerConfig.gradeId - 1]} · 选择学科` : ''}
+        title={pickerConfig ? `${ALL_GRADE_LABELS[pickerConfig.gradeId - 1]} · 选择学科` : ''}
         subjects={subjects}
         currentValue={currentPickerSubject}
         onSelect={(subjectId) => {

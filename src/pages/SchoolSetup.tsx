@@ -4,6 +4,7 @@ import { Building2, MapPin, Users, Key, CheckCircle } from 'lucide-react';
 import { api } from '../api';
 import { useAuthStore, useAppStore } from '../store';
 import TimeTimeline, { TimeSlot } from '../components/TimeTimeline';
+import { SchoolType } from '../lib/grades';
 
 export default function SchoolSetup() {
   const [mode, setMode] = useState<'create' | 'join'>('create');
@@ -13,40 +14,18 @@ export default function SchoolSetup() {
   // 创建学校表单
   const [schoolName, setSchoolName] = useState('');
   const [region, setRegion] = useState('');
-  const [schoolType, setSchoolType] = useState<'primary' | 'middle' | 'nine-year'>('primary');
+  const [schoolType, setSchoolType] = useState<SchoolType>('小学');
   
   // 学校时间配置
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([
-    {
-      id: '1',
-      type: 'morning-reading',
-      startTime: '07:30',
-      endTime: '08:00'
-    },
-    {
-      id: '2',
-      type: 'class',
-      startTime: '08:00',
-      endTime: '08:45'
-    },
-    {
-      id: '3',
-      type: 'exercise',
-      startTime: '10:00',
-      endTime: '10:15'
-    },
-    {
-      id: '4',
-      type: 'self-study',
-      startTime: '11:40',
-      endTime: '14:00'
-    },
-    {
-      id: '5',
-      type: 'self-study',
-      startTime: '18:30',
-      endTime: '20:30'
-    }
+    { id: '1', type: 'morning-reading', startTime: '07:30', endTime: '08:00' },
+    { id: '2', type: 'class', startTime: '08:00', endTime: '08:40' },
+    { id: '3', type: 'class', startTime: '08:50', endTime: '09:30' },
+    { id: '4', type: 'class', startTime: '10:00', endTime: '10:40' },
+    { id: '5', type: 'class', startTime: '10:50', endTime: '11:30' },
+    { id: '6', type: 'class', startTime: '14:00', endTime: '14:40' },
+    { id: '7', type: 'class', startTime: '14:50', endTime: '15:30' },
+    { id: '8', type: 'self-study', startTime: '16:30', endTime: '18:00' },
   ]);
 
   // 加入学校表单
@@ -223,9 +202,10 @@ export default function SchoolSetup() {
                   className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                   required
                 >
-                  <option value="primary">完全小学</option>
-                  <option value="middle">初级中学</option>
-                  <option value="nine-year">九年一贯制</option>
+                  <option value="小学">小学</option>
+                  <option value="初中">初中</option>
+                  <option value="小学（五•四学制）">小学（五•四学制）</option>
+                  <option value="初中（五•四学制）">初中（五•四学制）</option>
                 </select>
               </div>
             </div>

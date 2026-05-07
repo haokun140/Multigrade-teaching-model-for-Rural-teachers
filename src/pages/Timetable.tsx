@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import { useAuthStore } from '../store';
 import { api } from '../api';
 import { Timetable as TimetableType, Class as ClassType, Subject, HorizontalPlan } from '../types';
+import { ALL_GRADE_LABELS } from '../lib/grades';
 import BottomNav from '../components/BottomNav';
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -31,8 +32,7 @@ const getTypeColor = (type: string) => {
   }
 };
 
-const GRADE_COLORS = ['bg-orange-400', 'bg-yellow-400', 'bg-blue-400', 'bg-indigo-400', 'bg-purple-400', 'bg-gray-900'];
-const GRADE_NAMES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'];
+const GRADE_COLORS = ['bg-orange-400', 'bg-yellow-400', 'bg-blue-400', 'bg-indigo-400', 'bg-purple-400', 'bg-gray-900', 'bg-red-400', 'bg-teal-400', 'bg-pink-400'];
 
 function getMondayOfWeek(date: Date) {
   const d = dayjs(date);
@@ -183,7 +183,7 @@ const Timetable: React.FC = () => {
         if (!result.find(r => r.gradeId === entry.gradeId)) {
           result.push({
             gradeId: entry.gradeId,
-            gradeName: GRADE_NAMES[entry.gradeId - 1] || '',
+            gradeName: ALL_GRADE_LABELS[entry.gradeId - 1] || '',
             subjectName,
             firstChar,
           });
@@ -196,7 +196,7 @@ const Timetable: React.FC = () => {
               const s = getSubjectById(gs.subjectId);
               result.push({
                 gradeId: gs.gradeId,
-                gradeName: GRADE_NAMES[gs.gradeId - 1] || '',
+                gradeName: ALL_GRADE_LABELS[gs.gradeId - 1] || '',
                 subjectName: s?.name || '',
                 firstChar: getFirstChar(s?.name || ''),
               });
@@ -207,7 +207,7 @@ const Timetable: React.FC = () => {
             if (!result.find(r => r.gradeId === gid)) {
               result.push({
                 gradeId: gid,
-                gradeName: GRADE_NAMES[gid - 1] || '',
+                gradeName: ALL_GRADE_LABELS[gid - 1] || '',
                 subjectName,
                 firstChar: getFirstChar(subjectName),
               });
@@ -442,7 +442,7 @@ const Timetable: React.FC = () => {
                           <div className="text-xs text-gray-500 mt-0.5">
                             {cls.type === 'composite' ? '复式班' : '单式班'}
                             <span className="ml-2">
-                              {cls.gradeIds.map(id => GRADE_NAMES[id - 1]).join('、')}
+                              {cls.gradeIds.map(id => ALL_GRADE_LABELS[id - 1]).join('、')}
                             </span>
                           </div>
                         </div>
@@ -614,7 +614,7 @@ const Timetable: React.FC = () => {
                     {selectedClass.gradeIds.map(gid => (
                       <span key={gid} className="flex items-center gap-1.5 text-sm">
                         <span className={`w-3 h-3 rounded-full inline-block ${getGradeColor(gid)}`}></span>
-                        <span className="text-gray-700">{GRADE_NAMES[gid - 1]}</span>
+                        <span className="text-gray-700">{ALL_GRADE_LABELS[gid - 1]}</span>
                       </span>
                     ))}
                   </div>

@@ -5,6 +5,7 @@ import { useAuthStore } from '../store';
 import { api } from '../api';
 import { LessonPlan, Subject } from '../types';
 import BottomNav from '../components/BottomNav';
+import { ALL_GRADE_LABELS } from '../lib/grades';
 
 const LessonCard: React.FC = () => {
   const navigate = useNavigate();
@@ -13,8 +14,6 @@ const LessonCard: React.FC = () => {
   const [lessonPlan, setLessonPlan] = useState<LessonPlan | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'];
 
   useEffect(() => {
     if (user && token && id) {
@@ -71,7 +70,7 @@ const LessonCard: React.FC = () => {
   }
 
   const subject = getSubjectById(lessonPlan.subjectId);
-  const grade = GRADES[lessonPlan.gradeId - 1];
+  const grade = ALL_GRADE_LABELS[lessonPlan.gradeId - 1];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">

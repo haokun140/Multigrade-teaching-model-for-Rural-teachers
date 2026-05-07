@@ -4,9 +4,10 @@ import { textbookCatalogRepository } from '../repositories/textbookCatalogReposi
 export const textbookController = {
   getVersions: async (req: Request, res: Response) => {
     try {
-      const { subject } = req.query;
+      const { subject, stage } = req.query;
       const versions = await textbookCatalogRepository.findVersions(
-        subject ? String(subject) : undefined
+        subject ? String(subject) : undefined,
+        stage ? String(stage) : undefined
       );
       return res.json({ success: true, data: versions });
     } catch (error) {
@@ -17,10 +18,11 @@ export const textbookController = {
 
   getGrades: async (req: Request, res: Response) => {
     try {
-      const { subject, version } = req.query;
+      const { subject, version, stage } = req.query;
       const grades = await textbookCatalogRepository.findGrades(
         subject ? String(subject) : undefined,
-        version ? String(version) : undefined
+        version ? String(version) : undefined,
+        stage ? String(stage) : undefined
       );
       return res.json({ success: true, data: grades });
     } catch (error) {
@@ -31,11 +33,12 @@ export const textbookController = {
 
   getVolumes: async (req: Request, res: Response) => {
     try {
-      const { subject, version, grade } = req.query;
+      const { subject, version, grade, stage } = req.query;
       const volumes = await textbookCatalogRepository.findVolumes(
         subject ? String(subject) : undefined,
         version ? String(version) : undefined,
-        grade ? String(grade) : undefined
+        grade ? String(grade) : undefined,
+        stage ? String(stage) : undefined
       );
       return res.json({ success: true, data: volumes });
     } catch (error) {

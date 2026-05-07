@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../store';
 import { api } from '../api';
 import { LessonPlan, LessonStep, Subject, Class as ClassType, CurriculumConfig } from '../types';
+import { ALL_GRADE_LABELS } from '../lib/grades';
 
 const LessonPlanEdit: React.FC = () => {
   const navigate = useNavigate();
@@ -19,8 +20,6 @@ const LessonPlanEdit: React.FC = () => {
   const [showGradeModal, setShowGradeModal] = useState(false);
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [showVolumeModal, setShowVolumeModal] = useState(false);
-
-  const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'];
 
   interface PlanFormState {
     schoolId: string;
@@ -361,7 +360,7 @@ const LessonPlanEdit: React.FC = () => {
                 }`}
               >
                 <span className={plan.gradeId ? 'text-gray-900' : 'text-gray-400'}>
-                  {plan.gradeId ? GRADES[plan.gradeId - 1] : '请选择年级'}
+                  {plan.gradeId ? ALL_GRADE_LABELS[plan.gradeId - 1] : '请选择年级'}
                 </span>
                 {!isViewMode && <ChevronDown className="w-4 h-4 text-gray-400" />}
               </div>
@@ -648,7 +647,7 @@ const LessonPlanEdit: React.FC = () => {
               </button>
             </div>
             <div className="space-y-2 max-h-80 overflow-y-auto">
-              {GRADES.map((g, i) => (
+              {ALL_GRADE_LABELS.map((g, i) => (
                 <button
                   key={i}
                   onClick={() => {

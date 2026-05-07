@@ -28,7 +28,7 @@ export const schoolRepository = {
     }).select('*').single();
     if (error) throw error;
 
-    await createDefaultSubjects(id);
+    await createDefaultSubjects(id, type);
 
     return rowToSchool(data!);
   },

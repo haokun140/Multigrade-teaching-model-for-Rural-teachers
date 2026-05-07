@@ -5,17 +5,7 @@ import { useAuthStore, useAppStore } from '../store';
 import { api } from '../api';
 import { CurriculumConfig, Subject } from '../types';
 import BottomNav from '../components/BottomNav';
-
-function getAvailableGrades(schoolType?: string): { id: number; label: string }[] {
-  const allLabels = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '初一', '初二', '初三'];
-  let ids: number[];
-  switch (schoolType) {
-    case 'middle': ids = [7, 8, 9]; break;
-    case 'nine-year': ids = [1, 2, 3, 4, 5, 6, 7, 8, 9]; break;
-    default: ids = [1, 2, 3, 4, 5, 6]; break;
-  }
-  return ids.map(id => ({ id, label: allLabels[id - 1] }));
-}
+import { getAvailableGrades, ALL_GRADE_LABELS } from '../lib/grades';
 
 const CurriculumConfigManager: React.FC = () => {
   const navigate = useNavigate();
@@ -35,8 +25,6 @@ const CurriculumConfigManager: React.FC = () => {
   const [showGradeFilter, setShowGradeFilter] = useState(false);
 
   const grades = useMemo(() => getAvailableGrades(school?.type), [school?.type]);
-
-  const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '初一', '初二', '初三'];
 
   const [availableVersions, setAvailableVersions] = useState<string[]>([]);
   const [availableVolumes, setAvailableVolumes] = useState<string[]>([]);
@@ -63,7 +51,7 @@ const CurriculumConfigManager: React.FC = () => {
     if (!subject) return;
 
     setLoadingVersions(true);
-    api.getTextbookVersions(subject.name)
+    api.getTextbookVersions(subject.name, school?.type)
       .then(res => {
         if (res.success && res.data) setAvailableVersions(res.data);
       })
@@ -78,7 +66,7 @@ const CurriculumConfigManager: React.FC = () => {
     if (!subject) return;
 
     setLoadingVolumes(true);
-    api.getTextbookVolumes(subject.name, formData.version)
+    api.getTextbookVolumes(subject.name, formData.version, undefined, school?.type)
       .then(res => {
         if (res.success && res.data) setAvailableVolumes(res.data);
       })
@@ -207,7 +195,7 @@ const CurriculumConfigManager: React.FC = () => {
   }, [configs, filterSubjectId, filterGradeId]);
 
   const selectedSubjectName = filterSubjectId ? getSubjectById(filterSubjectId)?.name : '';
-  const selectedGradeLabel = filterGradeId ? GRADES[parseInt(filterGradeId) - 1] : '';
+  const selectedGradeLabel = filterGradeId ? ALL_GRADE_LABELS[parseInt(filterGradeId) - 1] : '';
 
   if (loading) {
     return (
@@ -278,7 +266,7 @@ const CurriculumConfigManager: React.FC = () => {
         ) : (
           filteredConfigs.map(config => {
             const subject = getSubjectById(config.subjectId);
-            const grade = GRADES[config.gradeId - 1];
+            const grade = ALL_GRADE_LABELS[config.gradeId - 1];
             return (
               <div key={config.id} className="bg-white rounded-xl shadow-sm p-4">
                 <div className="flex items-start justify-between">
@@ -418,6 +406,21 @@ const CurriculumConfigManager: React.FC = () => {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">教材版本</label>
+                <select
+                  value={formData.version}
+                  onChange={(e) => setFormData(prev => ({ ...prev, version: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={!formData.subjectId || loadingVersions}
+                >
+                  <option value="">{loadingVersions ? '加载中...' : '请选择版本'}</option>
+                  {availableVersions.map(version => (
+                    <option key={version} value={version}>{version}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">年级（可多选）</label>
                 <div className="grid grid-cols-3 gap-2">
                   {grades.map(({ id, label }) => {
@@ -445,21 +448,6 @@ const CurriculumConfigManager: React.FC = () => {
                     );
                   })}
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">教材版本</label>
-                <select
-                  value={formData.version}
-                  onChange={(e) => setFormData(prev => ({ ...prev, version: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={!formData.subjectId || loadingVersions}
-                >
-                  <option value="">{loadingVersions ? '加载中...' : '请选择版本'}</option>
-                  {availableVersions.map(version => (
-                    <option key={version} value={version}>{version}</option>
-                  ))}
-                </select>
               </div>
 
               <div>

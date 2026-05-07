@@ -1,15 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { api } from '../api';
-
-const GRADE_TEXT_TO_ID: Record<string, string> = {
-  '一年级': '1', '二年级': '2', '三年级': '3', '四年级': '4', '五年级': '5', '六年级': '6',
-  '初一': '7', '初二': '8', '初三': '9',
-};
-const GRADE_ID_TO_LABEL: Record<string, string> = {
-  '1': '一年级', '2': '二年级', '3': '三年级', '4': '四年级', '5': '五年级', '6': '六年级',
-  '7': '初一', '8': '初二', '9': '初三',
-};
+import { GRADE_TEXT_TO_ID, GRADE_ID_TO_LABEL } from '../lib/grades';
 
 interface SubjectSelectorProps {
   subjects: Array<{ id: string; name: string }>;
@@ -25,9 +17,10 @@ interface SubjectSelectorProps {
     gradeId: string;
     volume: string;
   }) => void;
+  stage?: string;
 }
 
-const SubjectSelector: React.FC<SubjectSelectorProps> = ({ subjects, value, onChange }) => {
+const SubjectSelector: React.FC<SubjectSelectorProps> = ({ subjects, value, onChange, stage }) => {
   const [expanded, setExpanded] = useState(false);
   const [localValue, setLocalValue] = useState(value);
 
@@ -37,10 +30,9 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ subjects, value, onCh
 
   const subjectName = subjects.find(s => s.id === localValue.subjectId)?.name;
 
-  // 学科变更 → 拉版本
   const fetchVersions = async (subject: string) => {
     try {
-      const res = await api.getTextbookVersions(subject);
+      const res = await api.getTextbookVersions(subject, stage);
       if (res.success && res.data) {
         setAvailableVersions(res.data);
         return res.data;
@@ -49,12 +41,10 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ subjects, value, onCh
     return [];
   };
 
-  // 版本变更 → 拉年级
   const fetchGrades = async (subject: string, version: string) => {
     try {
-      const res = await api.getTextbookGrades(subject, version);
+      const res = await api.getTextbookGrades(subject, version, stage);
       if (res.success && res.data) {
-        // 将文本年级映射为数字 ID
         const ids = res.data.map((g: string) => GRADE_TEXT_TO_ID[g]).filter(Boolean);
         setAvailableGradeIds(ids);
         return ids;
@@ -63,10 +53,9 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ subjects, value, onCh
     return [];
   };
 
-  // 年级变更 → 拉册次
   const fetchVolumes = async (subject: string, version: string, gradeLabel: string) => {
     try {
-      const res = await api.getTextbookVolumes(subject, version, gradeLabel);
+      const res = await api.getTextbookVolumes(subject, version, gradeLabel, stage);
       if (res.success && res.data) {
         setAvailableVolumes(res.data);
         return res.data;

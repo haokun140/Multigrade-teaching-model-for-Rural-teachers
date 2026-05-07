@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, User, School, LogOut, ChevronRight, BookOpen, Clock, X } from 'lucide-react';
+import { Settings as SettingsIcon, User, School as SchoolIcon, LogOut, ChevronRight, BookOpen, Clock, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store';
 import { api } from '../api';
 import { School as SchoolType } from '../types';
 import BottomNav from '../components/BottomNav';
 import TimeTimeline, { TimeSlot } from '../components/TimeTimeline';
+import { getSchoolTypeLabel } from '../lib/grades';
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
@@ -110,7 +111,7 @@ const Settings: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 bg-gray-50 border-b flex items-center justify-between">
             <h2 className="text-sm font-medium text-gray-700 flex items-center gap-2">
-              <School className="w-4 h-4" />
+              <SchoolIcon className="w-4 h-4" />
               学校信息
             </h2>
             <button
@@ -118,7 +119,7 @@ const Settings: React.FC = () => {
               className="text-sm text-blue-600 font-medium hover:text-blue-700 flex items-center gap-1"
             >
               <Clock className="w-4 h-4" />
-              规则编辑
+              学校时间配置
             </button>
           </div>
           <div className="divide-y">
@@ -133,7 +134,7 @@ const Settings: React.FC = () => {
             <div className="px-4 py-3 flex items-center justify-between">
               <span className="text-gray-600">学校类型</span>
               <span className="text-gray-900">
-                {school?.type === 'primary' ? '完全小学' : school?.type === 'middle' ? '初级中学' : school?.type === 'nine-year' ? '九年一贯制' : '未设置'}
+                {getSchoolTypeLabel(school?.type || '')}
               </span>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
@@ -165,12 +166,12 @@ const Settings: React.FC = () => {
         </button>
       </div>
 
-      {/* 规则编辑弹窗 */}
+      {/* 学校时间配置弹窗 */}
       {showTimeModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]" onClick={() => setShowTimeModal(false)}>
           <div className="bg-white rounded-2xl w-full max-w-lg p-6 mx-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900">规则编辑</h3>
+              <h3 className="text-lg font-bold text-gray-900">学校时间配置</h3>
               <button onClick={() => setShowTimeModal(false)} className="p-2 text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
               </button>

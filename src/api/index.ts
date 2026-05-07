@@ -306,23 +306,28 @@ class ApiClient {
   }
 
   // Textbook Catalog endpoints
-  async getTextbookVersions(subject?: string): Promise<ApiResponse<string[]>> {
-    const query = subject ? `?subject=${encodeURIComponent(subject)}` : '';
-    return this.request(`/api/textbooks/versions${query}`);
+  async getTextbookVersions(subject?: string, stage?: string): Promise<ApiResponse<string[]>> {
+    const params = new URLSearchParams();
+    if (subject) params.append('subject', subject);
+    if (stage) params.append('stage', stage);
+    const query = params.toString();
+    return this.request(`/api/textbooks/versions${query ? '?' + query : ''}`);
   }
 
-  async getTextbookGrades(subject?: string, version?: string): Promise<ApiResponse<string[]>> {
+  async getTextbookGrades(subject?: string, version?: string, stage?: string): Promise<ApiResponse<string[]>> {
     const params = new URLSearchParams();
     if (subject) params.append('subject', subject);
     if (version) params.append('version', version);
+    if (stage) params.append('stage', stage);
     return this.request(`/api/textbooks/grades?${params.toString()}`);
   }
 
-  async getTextbookVolumes(subject?: string, version?: string, grade?: string): Promise<ApiResponse<string[]>> {
+  async getTextbookVolumes(subject?: string, version?: string, grade?: string, stage?: string): Promise<ApiResponse<string[]>> {
     const params = new URLSearchParams();
     if (subject) params.append('subject', subject);
     if (version) params.append('version', version);
     if (grade) params.append('grade', grade);
+    if (stage) params.append('stage', stage);
     return this.request(`/api/textbooks/volumes?${params.toString()}`);
   }
 }

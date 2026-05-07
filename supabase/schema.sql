@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS schools (
   id TEXT PRIMARY KEY,              -- 学校ID (UUID)
   name TEXT NOT NULL,               -- 学校名称
   region TEXT NOT NULL,             -- 所在地区
-  type TEXT NOT NULL CHECK(type IN ('primary', 'middle', 'nine-year')), -- 学校类型: primary=小学 middle=初中 nine-year=九年一贯制
+  type TEXT NOT NULL CHECK(type IN ('小学', '初中', '小学（五•四学制）', '初中（五•四学制）')), -- 学校类型
   invite_code TEXT UNIQUE NOT NULL, -- 邀请码（唯一，6位字母数字）
   created_by TEXT NOT NULL,         -- 创建者用户ID
   rules TEXT,                       -- 学校规则/公告（纯文本）

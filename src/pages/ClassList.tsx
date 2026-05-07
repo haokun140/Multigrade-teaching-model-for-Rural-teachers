@@ -5,22 +5,7 @@ import { useAuthStore, useAppStore } from '../store';
 import { api } from '../api';
 import { Class as ClassType } from '../types';
 import BottomNav from '../components/BottomNav';
-
-function getGradeLabel(gradeId: number): string {
-  const labels = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '初一', '初二', '初三'];
-  return labels[gradeId - 1] || `年级${gradeId}`;
-}
-
-function getAvailableGrades(schoolType?: string): { id: number; label: string }[] {
-  const allLabels = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '初一', '初二', '初三'];
-  let ids: number[];
-  switch (schoolType) {
-    case 'middle': ids = [7, 8, 9]; break;
-    case 'nine-year': ids = [1, 2, 3, 4, 5, 6, 7, 8, 9]; break;
-    default: ids = [1, 2, 3, 4, 5, 6]; break;
-  }
-  return ids.map(id => ({ id, label: allLabels[id - 1] }));
-}
+import { getAvailableGrades, ALL_GRADE_LABELS } from '../lib/grades';
 
 const ClassList: React.FC = () => {
   const navigate = useNavigate();
@@ -240,7 +225,7 @@ const ClassList: React.FC = () => {
                       <div className="font-medium text-gray-900">{cls.name}</div>
                       <div className="text-xs text-gray-500 mt-0.5">
                         {cls.type === 'composite' ? '复式班' : '单式班'}
-                        {cls.gradeIds.length > 0 && ` · ${cls.gradeIds.map(getGradeLabel).join('、')}`}
+                        {cls.gradeIds.length > 0 && ` · ${cls.gradeIds.map(gid => ALL_GRADE_LABELS[gid - 1] || `年级${gid}`).join('、')}`}
                       </div>
                     </div>
                   </div>

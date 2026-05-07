@@ -5,6 +5,7 @@ import { useAuthStore } from '../store';
 import { api } from '../api';
 import { Class as ClassType, Subject, LessonStep } from '../types';
 import BottomNav from '../components/BottomNav';
+import { ALL_GRADE_LABELS } from '../lib/grades';
 
 interface Track {
   gradeId: number;
@@ -39,7 +40,6 @@ interface TeachingStep {
   };
 }
 
-const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'];
 const DAY_NAMES = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
 function getMondayOfWeek(date: Date) {
@@ -135,7 +135,7 @@ const HorizontalPlanView: React.FC = () => {
         if (plan.tracks && plan.tracks.length > 0) {
           const restoredTracks: Track[] = plan.tracks.map((t: any) => ({
             gradeId: t.gradeId,
-            gradeName: t.gradeName || GRADES[t.gradeId - 1],
+            gradeName: t.gradeName || ALL_GRADE_LABELS[t.gradeId - 1],
             subjectId: t.subjectId,
             subjectName: t.subjectName || '',
             version: t.version || '',

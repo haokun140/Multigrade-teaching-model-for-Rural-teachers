@@ -4,17 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore, useAppStore } from '../store';
 import { api } from '../api';
 import { CreateClassRequest } from '../types';
-
-function getAvailableGrades(schoolType?: string): { id: number; label: string }[] {
-  const allLabels = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '初一', '初二', '初三'];
-  let ids: number[];
-  switch (schoolType) {
-    case 'middle': ids = [7, 8, 9]; break;
-    case 'nine-year': ids = [1, 2, 3, 4, 5, 6, 7, 8, 9]; break;
-    default: ids = [1, 2, 3, 4, 5, 6]; break;
-  }
-  return ids.map(id => ({ id, label: allLabels[id - 1] }));
-}
+import { getAvailableGrades } from '../lib/grades';
 
 const CreateClass: React.FC = () => {
   const navigate = useNavigate();

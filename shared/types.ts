@@ -30,7 +30,7 @@ export interface School {
   id: string;
   name: string;
   region: string;
-  type: 'primary' | 'middle' | 'nine-year';
+  type: '小学' | '初中' | '小学（五•四学制）' | '初中（五•四学制）';
   inviteCode: string;
   rules?: string;
   createdAt: string;
@@ -39,7 +39,7 @@ export interface School {
 export interface CreateSchoolRequest {
   name: string;
   region: string;
-  type: 'primary' | 'middle' | 'nine-year';
+  type: '小学' | '初中' | '小学（五•四学制）' | '初中（五•四学制）';
 }
 
 export interface JoinSchoolRequest {
