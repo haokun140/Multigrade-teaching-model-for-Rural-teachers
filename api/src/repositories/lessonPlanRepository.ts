@@ -1,8 +1,29 @@
-import { getDb } from '../db/db.js';
+import { supabase, handleSingle } from '../db/supabase.js';
 import type { LessonPlan } from '../../../shared/types.js';
 
+function rowToPlan(row: any): LessonPlan {
+  return {
+    id: row.id,
+    schoolId: row.school_id,
+    classId: row.class_id,
+    subjectId: row.subject_id,
+    gradeId: row.grade_id,
+    unit: row.unit,
+    title: row.title,
+    version: row.version,
+    volume: row.volume,
+    objectives: row.objectives || [],
+    steps: row.steps || [],
+    totalDuration: row.total_duration,
+    status: row.status,
+    timetableId: row.timetable_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 export const lessonPlanRepository = {
-  create: (
+  create: async (
     id: string,
     schoolId: string,
     classId: string | null,
@@ -17,179 +38,71 @@ export const lessonPlanRepository = {
     totalDuration: number = 0,
     status: string = 'draft',
     version: string | null = null
-  ): LessonPlan => {
-    const db = getDb();
-    const stmt = db.prepare(
-      'INSERT INTO lesson_plans (id, school_id, class_id, subject_id, grade_id, unit, title, volume, timetable_id, objectives, steps, total_duration, status, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    );
-    stmt.run(id, schoolId, classId || null, subjectId, gradeId, unit, title, volume, timetableId, JSON.stringify(objectives), JSON.stringify(steps), totalDuration, status, version);
-    return lessonPlanRepository.findById(id)!;
+  ): Promise<LessonPlan> => {
+    const { data, error } = await supabase.from('lesson_plans').insert({
+      id, school_id: schoolId, class_id: classId || null, subject_id: subjectId,
+      grade_id: gradeId, unit, title, volume, timetable_id: timetableId,
+      objectives, steps, total_duration: totalDuration, status, version,
+    }).select('*').single();
+    if (error) throw error;
+    return rowToPlan(data!);
   },
 
-  findById: (id: string): LessonPlan | null => {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM lesson_plans WHERE id = ?');
-    const row = stmt.get(id) as any;
-    if (!row) return null;
-    return {
-      id: row.id,
-      schoolId: row.school_id,
-      classId: row.class_id,
-      subjectId: row.subject_id,
-      gradeId: row.grade_id,
-      unit: row.unit,
-      title: row.title,
-      version: row.version,
-      volume: row.volume,
-      objectives: row.objectives ? JSON.parse(row.objectives) : [],
-      steps: row.steps ? JSON.parse(row.steps) : [],
-      totalDuration: row.total_duration,
-      status: row.status,
-      timetableId: row.timetable_id,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    };
+  findById: async (id: string): Promise<LessonPlan | null> => {
+    const row = handleSingle(await supabase.from('lesson_plans').select('*').eq('id', id).single());
+    return row ? rowToPlan(row) : null;
   },
 
-  findByClassAndGradeAndSubject: (
+  findByClassAndGradeAndSubject: async (
     classId: string,
     gradeId: number,
     subjectId: string
-  ): LessonPlan[] => {
-    const db = getDb();
-    const stmt = db.prepare(
-      'SELECT * FROM lesson_plans WHERE class_id = ? AND grade_id = ? AND subject_id = ? ORDER BY updated_at DESC'
-    );
-    const rows = stmt.all(classId, gradeId, subjectId) as any[];
-    return rows.map(row => ({
-      id: row.id,
-      schoolId: row.school_id,
-      classId: row.class_id,
-      subjectId: row.subject_id,
-      gradeId: row.grade_id,
-      unit: row.unit,
-      title: row.title,
-      version: row.version,
-      volume: row.volume,
-      objectives: row.objectives ? JSON.parse(row.objectives) : [],
-      steps: row.steps ? JSON.parse(row.steps) : [],
-      totalDuration: row.total_duration,
-      status: row.status,
-      timetableId: row.timetable_id,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    }));
+  ): Promise<LessonPlan[]> => {
+    const { data, error } = await supabase.from('lesson_plans').select('*').eq('class_id', classId).eq('grade_id', gradeId).eq('subject_id', subjectId).order('updated_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(rowToPlan);
   },
 
-  findBySchoolGradeAndSubject: (
+  findBySchoolGradeAndSubject: async (
     schoolId: string,
     gradeId: number,
     subjectId: string
-  ): LessonPlan[] => {
-    const db = getDb();
-    const stmt = db.prepare(
-      'SELECT * FROM lesson_plans WHERE school_id = ? AND grade_id = ? AND subject_id = ? ORDER BY updated_at DESC'
-    );
-    const rows = stmt.all(schoolId, gradeId, subjectId) as any[];
-    return rows.map(row => ({
-      id: row.id,
-      schoolId: row.school_id,
-      classId: row.class_id,
-      subjectId: row.subject_id,
-      gradeId: row.grade_id,
-      unit: row.unit,
-      title: row.title,
-      version: row.version,
-      volume: row.volume,
-      objectives: row.objectives ? JSON.parse(row.objectives) : [],
-      steps: row.steps ? JSON.parse(row.steps) : [],
-      totalDuration: row.total_duration,
-      status: row.status,
-      timetableId: row.timetable_id,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    }));
+  ): Promise<LessonPlan[]> => {
+    const { data, error } = await supabase.from('lesson_plans').select('*').eq('school_id', schoolId).eq('grade_id', gradeId).eq('subject_id', subjectId).order('updated_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(rowToPlan);
   },
 
-  update: (id: string, data: Partial<Omit<LessonPlan, 'id' | 'createdAt' | 'updatedAt'>>): void => {
-    const db = getDb();
-    const updates: string[] = [];
-    const params: any[] = [];
+  update: async (id: string, data: Partial<Omit<LessonPlan, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> => {
+    const fields: Record<string, unknown> = {};
 
-    if (data.unit !== undefined) {
-      updates.push('unit = ?');
-      params.push(data.unit);
-    }
-    if (data.title !== undefined) {
-      updates.push('title = ?');
-      params.push(data.title);
-    }
-    if (data.version !== undefined) {
-      updates.push('version = ?');
-      params.push(data.version);
-    }
-    if (data.volume !== undefined) {
-      updates.push('volume = ?');
-      params.push(data.volume);
-    }
-    if (data.objectives !== undefined) {
-      updates.push('objectives = ?');
-      params.push(JSON.stringify(data.objectives));
-    }
+    if (data.unit !== undefined) fields.unit = data.unit;
+    if (data.title !== undefined) fields.title = data.title;
+    if (data.version !== undefined) fields.version = data.version;
+    if (data.volume !== undefined) fields.volume = data.volume;
+    if (data.objectives !== undefined) fields.objectives = data.objectives;
     if (data.steps !== undefined) {
-      updates.push('steps = ?');
-      params.push(JSON.stringify(data.steps));
-      // 计算总时长
-      const totalDuration = data.steps.reduce((sum, step) => sum + step.duration, 0);
-      updates.push('total_duration = ?');
-      params.push(totalDuration);
+      fields.steps = data.steps;
+      fields.total_duration = data.steps.reduce((sum, step) => sum + step.duration, 0);
     }
-    if (data.status !== undefined) {
-      updates.push('status = ?');
-      params.push(data.status);
-    }
-    if (data.timetableId !== undefined) {
-      updates.push('timetable_id = ?');
-      params.push(data.timetableId);
-    }
+    if (data.status !== undefined) fields.status = data.status;
+    if (data.timetableId !== undefined) fields.timetable_id = data.timetableId;
 
-    if (updates.length > 0) {
-      updates.push('updated_at = CURRENT_TIMESTAMP');
-      params.push(id);
-      const stmt = db.prepare(`UPDATE lesson_plans SET ${updates.join(', ')} WHERE id = ?`);
-      stmt.run(...params);
+    if (Object.keys(fields).length > 0) {
+      fields.updated_at = new Date().toISOString();
+      const { error } = await supabase.from('lesson_plans').update(fields).eq('id', id);
+      if (error) throw error;
     }
   },
 
-  delete: (id: string): void => {
-    const db = getDb();
-    const stmt = db.prepare('DELETE FROM lesson_plans WHERE id = ?');
-    stmt.run(id);
+  delete: async (id: string): Promise<void> => {
+    const { error } = await supabase.from('lesson_plans').delete().eq('id', id);
+    if (error) throw error;
   },
 
-  findBySchool: (schoolId: string): LessonPlan[] => {
-    const db = getDb();
-    const stmt = db.prepare(
-      'SELECT * FROM lesson_plans WHERE school_id = ? ORDER BY updated_at DESC'
-    );
-    const rows = stmt.all(schoolId) as any[];
-    return rows.map(row => ({
-      id: row.id,
-      schoolId: row.school_id,
-      classId: row.class_id,
-      subjectId: row.subject_id,
-      gradeId: row.grade_id,
-      unit: row.unit,
-      title: row.title,
-      version: row.version,
-      volume: row.volume,
-      objectives: row.objectives ? JSON.parse(row.objectives) : [],
-      steps: row.steps ? JSON.parse(row.steps) : [],
-      totalDuration: row.total_duration,
-      status: row.status,
-      timetableId: row.timetable_id,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    }));
-  }
+  findBySchool: async (schoolId: string): Promise<LessonPlan[]> => {
+    const { data, error } = await supabase.from('lesson_plans').select('*').eq('school_id', schoolId).order('updated_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(rowToPlan);
+  },
 };

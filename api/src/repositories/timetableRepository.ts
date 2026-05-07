@@ -1,4 +1,4 @@
-import { getDb } from '../db/db.js';
+import { supabase, handleSingle } from '../db/supabase.js';
 import type { TimetableEntry } from '../../../shared/types.js';
 
 const rowToEntry = (row: any): TimetableEntry => ({
@@ -13,7 +13,7 @@ const rowToEntry = (row: any): TimetableEntry => ({
 });
 
 export const timetableRepository = {
-  create: (
+  create: async (
     id: string,
     classId: string,
     dayOfWeek: number,
@@ -22,72 +22,55 @@ export const timetableRepository = {
     teacherId: string,
     lessonType: string,
     gradeId?: number
-  ): TimetableEntry => {
-    const db = getDb();
-    const stmt = db.prepare(
-      'INSERT INTO timetables (id, class_id, day_of_week, period_index, grade_id, subject_id, teacher_id, lesson_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    );
-    stmt.run(id, classId, dayOfWeek, periodIndex, gradeId ?? null, subjectId, teacherId, lessonType);
-    return timetableRepository.findById(id)!;
+  ): Promise<TimetableEntry> => {
+    const { data, error } = await supabase.from('timetables').insert({
+      id, class_id: classId, day_of_week: dayOfWeek, period_index: periodIndex,
+      grade_id: gradeId ?? null, subject_id: subjectId, teacher_id: teacherId, lesson_type: lessonType,
+    }).select('*').single();
+    if (error) throw error;
+    return rowToEntry(data!);
   },
 
-  findById: (id: string): TimetableEntry | null => {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM timetables WHERE id = ?');
-    const row = stmt.get(id) as any;
-    if (!row) return null;
-    return rowToEntry(row);
+  findById: async (id: string): Promise<TimetableEntry | null> => {
+    const row = handleSingle(await supabase.from('timetables').select('*').eq('id', id).single());
+    return row ? rowToEntry(row) : null;
   },
 
-  findByClass: (classId: string): TimetableEntry[] => {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM timetables WHERE class_id = ? ORDER BY day_of_week, period_index');
-    const rows = stmt.all(classId) as any[];
-    return rows.map(rowToEntry);
+  findByClass: async (classId: string): Promise<TimetableEntry[]> => {
+    const { data, error } = await supabase.from('timetables').select('*').eq('class_id', classId).order('day_of_week').order('period_index');
+    if (error) throw error;
+    return (data || []).map(rowToEntry);
   },
 
-  findByClassAndGrade: (classId: string, gradeId: number): TimetableEntry[] => {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM timetables WHERE class_id = ? AND grade_id = ? ORDER BY day_of_week, period_index');
-    const rows = stmt.all(classId, gradeId) as any[];
-    return rows.map(rowToEntry);
+  findByClassAndGrade: async (classId: string, gradeId: number): Promise<TimetableEntry[]> => {
+    const { data, error } = await supabase.from('timetables').select('*').eq('class_id', classId).eq('grade_id', gradeId).order('day_of_week').order('period_index');
+    if (error) throw error;
+    return (data || []).map(rowToEntry);
   },
 
-  findByPosition: (classId: string, dayOfWeek: number, periodIndex: number): TimetableEntry[] => {
-    const db = getDb();
-    const stmt = db.prepare(
-      'SELECT * FROM timetables WHERE class_id = ? AND day_of_week = ? AND period_index = ?'
-    );
-    const rows = stmt.all(classId, dayOfWeek, periodIndex) as any[];
-    return rows.map(rowToEntry);
+  findByPosition: async (classId: string, dayOfWeek: number, periodIndex: number): Promise<TimetableEntry[]> => {
+    const { data, error } = await supabase.from('timetables').select('*').eq('class_id', classId).eq('day_of_week', dayOfWeek).eq('period_index', periodIndex);
+    if (error) throw error;
+    return (data || []).map(rowToEntry);
   },
 
-  delete: (id: string): void => {
-    const db = getDb();
-    const stmt = db.prepare('DELETE FROM timetables WHERE id = ?');
-    stmt.run(id);
+  delete: async (id: string): Promise<void> => {
+    const { error } = await supabase.from('timetables').delete().eq('id', id);
+    if (error) throw error;
   },
 
-  deleteByPosition: (classId: string, dayOfWeek: number, periodIndex: number): void => {
-    const db = getDb();
-    const stmt = db.prepare(
-      'DELETE FROM timetables WHERE class_id = ? AND day_of_week = ? AND period_index = ?'
-    );
-    stmt.run(classId, dayOfWeek, periodIndex);
+  deleteByPosition: async (classId: string, dayOfWeek: number, periodIndex: number): Promise<void> => {
+    const { error } = await supabase.from('timetables').delete().eq('class_id', classId).eq('day_of_week', dayOfWeek).eq('period_index', periodIndex);
+    if (error) throw error;
   },
 
-  deleteByPositionAndGrade: (classId: string, dayOfWeek: number, periodIndex: number, gradeId: number): void => {
-    const db = getDb();
-    const stmt = db.prepare(
-      'DELETE FROM timetables WHERE class_id = ? AND day_of_week = ? AND period_index = ? AND grade_id = ?'
-    );
-    stmt.run(classId, dayOfWeek, periodIndex, gradeId);
+  deleteByPositionAndGrade: async (classId: string, dayOfWeek: number, periodIndex: number, gradeId: number): Promise<void> => {
+    const { error } = await supabase.from('timetables').delete().eq('class_id', classId).eq('day_of_week', dayOfWeek).eq('period_index', periodIndex).eq('grade_id', gradeId);
+    if (error) throw error;
   },
 
-  /** Delete all entries for a class (used when rebuilding a week's timetable) */
-  deleteByClass: (classId: string): void => {
-    const db = getDb();
-    const stmt = db.prepare('DELETE FROM timetables WHERE class_id = ?');
-    stmt.run(classId);
+  deleteByClass: async (classId: string): Promise<void> => {
+    const { error } = await supabase.from('timetables').delete().eq('class_id', classId);
+    if (error) throw error;
   },
 };

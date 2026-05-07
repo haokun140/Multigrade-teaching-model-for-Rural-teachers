@@ -12,69 +12,82 @@ export const progressController = {
       return res.status(401).json({ success: false, error: '未认证或未加入学校' });
     }
 
-    const classes = classRepository.findBySchool(req.user.schoolId);
-    const subjects = subjectRepository.findBySchool(req.user.schoolId);
+    const [classes, subjects] = await Promise.all([
+      classRepository.findBySchool(req.user.schoolId),
+      subjectRepository.findBySchool(req.user.schoolId),
+    ]);
+
+    // Pre-fetch all timetables and plans
+    const classTimetables = new Map<string, any[]>();
+    const allPlanIds: string[] = [];
+
+    for (const cls of classes) {
+      const timetables = await timetableRepository.findByClass(cls.id);
+      classTimetables.set(cls.id, timetables);
+      allPlanIds.push(...timetables.map(t => t.id));
+    }
+
+    const plans = allPlanIds.length > 0 ? await horizontalPlanRepository.findByTimetableIds(allPlanIds) : [];
+    const planSet = new Set(plans.map(p => p.timetableId));
 
     let totalLessons = 0;
     let preparedLessons = 0;
 
-    // 按班级统计
-    const byClass = classes.map(cls => {
-      const timetables = timetableRepository.findByClass(cls.id);
+    const byClass = [];
+    for (const cls of classes) {
+      const timetables = classTimetables.get(cls.id) || [];
       let classTotal = 0;
       let classPrepared = 0;
 
-      timetables.forEach(tt => {
+      for (const tt of timetables) {
         classTotal++;
         totalLessons++;
-        const hasPlan = !!horizontalPlanRepository.findByTimetable(tt.id);
-        if (hasPlan) {
+        if (planSet.has(tt.id)) {
           classPrepared++;
           preparedLessons++;
         }
-      });
+      }
 
-      return {
+      byClass.push({
         classId: cls.id,
         className: cls.name,
         total: classTotal,
-        prepared: classPrepared
-      };
-    });
+        prepared: classPrepared,
+      });
+    }
 
-    // 按学科统计
-    const bySubject = subjects.map(sub => {
+    const bySubject = [];
+    for (const sub of subjects) {
       let subjectTotal = 0;
       let subjectPrepared = 0;
 
-      classes.forEach(cls => {
-        const timetables = timetableRepository.findByClass(cls.id);
-        timetables.forEach(tt => {
+      for (const cls of classes) {
+        const timetables = classTimetables.get(cls.id) || [];
+        for (const tt of timetables) {
           if (tt.subjectId === sub.id) {
             subjectTotal++;
-            const hasPlan = !!horizontalPlanRepository.findByTimetable(tt.id);
-            if (hasPlan) {
+            if (planSet.has(tt.id)) {
               subjectPrepared++;
             }
           }
-        });
-      });
+        }
+      }
 
-      return {
+      bySubject.push({
         subjectId: sub.id,
         subjectName: sub.name,
         total: subjectTotal,
-        prepared: subjectPrepared
-      };
-    });
+        prepared: subjectPrepared,
+      });
+    }
 
     const stats: ProgressStats = {
       totalLessons,
       preparedLessons,
       byClass,
-      bySubject
+      bySubject,
     };
 
     return res.json({ success: true, data: stats });
-  }
+  },
 };

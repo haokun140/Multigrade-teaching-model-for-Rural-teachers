@@ -19,6 +19,7 @@ import timetableRoutes from './src/routes/timetableRoutes.js'
 import lessonPlanRoutes from './src/routes/lessonPlanRoutes.js'
 import horizontalPlanRoutes from './src/routes/horizontalPlanRoutes.js'
 import progressRoutes from './src/routes/progressRoutes.js'
+import textbookRoutes from './src/routes/textbookRoutes.js'
 
 // for esm mode
 const __filename = fileURLToPath(import.meta.url)
@@ -43,6 +44,7 @@ app.use('/api/timetables', timetableRoutes)
 app.use('/api/lesson-plans', lessonPlanRoutes)
 app.use('/api/horizontal-plans', horizontalPlanRoutes)
 app.use('/api/progress', progressRoutes)
+app.use('/api/textbooks', textbookRoutes)
 
 /**
  * health

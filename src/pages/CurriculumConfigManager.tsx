@@ -37,8 +37,11 @@ const CurriculumConfigManager: React.FC = () => {
   const grades = useMemo(() => getAvailableGrades(school?.type), [school?.type]);
 
   const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '初一', '初二', '初三'];
-  const DEFAULT_VERSIONS = ['人教版', '北师大版', '苏教版', '沪教版', '其他'];
-  const DEFAULT_VOLUMES = ['上册', '下册', '全一册'];
+
+  const [availableVersions, setAvailableVersions] = useState<string[]>([]);
+  const [availableVolumes, setAvailableVolumes] = useState<string[]>([]);
+  const [loadingVersions, setLoadingVersions] = useState(false);
+  const [loadingVolumes, setLoadingVolumes] = useState(false);
 
   const [formData, setFormData] = useState({
     subjectId: '',
@@ -52,6 +55,36 @@ const CurriculumConfigManager: React.FC = () => {
       loadData();
     }
   }, [user, token]);
+
+  // 学科变更时拉取版本列表
+  useEffect(() => {
+    if (!formData.subjectId || !showModal) return;
+    const subject = getSubjectById(formData.subjectId);
+    if (!subject) return;
+
+    setLoadingVersions(true);
+    api.getTextbookVersions(subject.name)
+      .then(res => {
+        if (res.success && res.data) setAvailableVersions(res.data);
+      })
+      .catch(() => setAvailableVersions([]))
+      .finally(() => setLoadingVersions(false));
+  }, [formData.subjectId, showModal]);
+
+  // 版本变更时拉取册次列表
+  useEffect(() => {
+    if (!formData.subjectId || !formData.version || !showModal) return;
+    const subject = getSubjectById(formData.subjectId);
+    if (!subject) return;
+
+    setLoadingVolumes(true);
+    api.getTextbookVolumes(subject.name, formData.version)
+      .then(res => {
+        if (res.success && res.data) setAvailableVolumes(res.data);
+      })
+      .catch(() => setAvailableVolumes([]))
+      .finally(() => setLoadingVolumes(false));
+  }, [formData.version, formData.subjectId, showModal]);
 
   const loadData = async () => {
     try {
@@ -76,6 +109,8 @@ const CurriculumConfigManager: React.FC = () => {
       version: '',
       volumes: [],
     });
+    setAvailableVersions([]);
+    setAvailableVolumes([]);
     setShowModal(true);
   };
 
@@ -87,6 +122,8 @@ const CurriculumConfigManager: React.FC = () => {
       version: config.version,
       volumes: [...config.volumes],
     });
+    setAvailableVersions([]);
+    setAvailableVolumes([]);
     setShowModal(true);
   };
 
@@ -416,9 +453,10 @@ const CurriculumConfigManager: React.FC = () => {
                   value={formData.version}
                   onChange={(e) => setFormData(prev => ({ ...prev, version: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={!formData.subjectId || loadingVersions}
                 >
-                  <option value="">请选择版本</option>
-                  {DEFAULT_VERSIONS.map(version => (
+                  <option value="">{loadingVersions ? '加载中...' : '请选择版本'}</option>
+                  {availableVersions.map(version => (
                     <option key={version} value={version}>{version}</option>
                   ))}
                 </select>
@@ -426,25 +464,31 @@ const CurriculumConfigManager: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">册次</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {DEFAULT_VOLUMES.map(volume => {
-                    const isSelected = formData.volumes.includes(volume);
-                    return (
-                      <button
-                        key={volume}
-                        type="button"
-                        onClick={() => handleToggleVolume(volume)}
-                        className={`py-2 px-4 rounded-lg border-2 text-sm font-medium transition-colors ${
-                          isSelected
-                            ? 'border-blue-500 bg-blue-50 text-blue-700'
-                            : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                        }`}
-                      >
-                        {volume}
-                      </button>
-                    );
-                  })}
-                </div>
+                {loadingVolumes ? (
+                  <p className="text-sm text-gray-400 py-2">加载中...</p>
+                ) : availableVolumes.length === 0 ? (
+                  <p className="text-sm text-gray-400 py-2">{formData.version ? '该版本暂无册次数据' : '请先选择版本'}</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {availableVolumes.map(volume => {
+                      const isSelected = formData.volumes.includes(volume);
+                      return (
+                        <button
+                          key={volume}
+                          type="button"
+                          onClick={() => handleToggleVolume(volume)}
+                          className={`py-2 px-4 rounded-lg border-2 text-sm font-medium transition-colors ${
+                            isSelected
+                              ? 'border-blue-500 bg-blue-50 text-blue-700'
+                              : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                          }`}
+                        >
+                          {volume}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <button

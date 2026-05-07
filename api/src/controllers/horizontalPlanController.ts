@@ -12,7 +12,7 @@ export const horizontalPlanController = {
     }
 
     const { timetableId } = req.params;
-    const plan = horizontalPlanRepository.findByTimetable(timetableId);
+    const plan = await horizontalPlanRepository.findByTimetable(timetableId);
 
     if (!plan) {
       return res.status(404).json({ success: false, error: '横向备课方案不存在' });
@@ -27,7 +27,7 @@ export const horizontalPlanController = {
     }
 
     const { id } = req.params;
-    const plan = horizontalPlanRepository.findById(id);
+    const plan = await horizontalPlanRepository.findById(id);
 
     if (!plan) {
       return res.status(404).json({ success: false, error: '横向备课方案不存在' });
@@ -47,7 +47,7 @@ export const horizontalPlanController = {
     }
 
     const planId = randomUUID();
-    const plan = horizontalPlanRepository.create(
+    const plan = await horizontalPlanRepository.create(
       planId,
       req.user.schoolId,
       classId,
@@ -66,15 +66,15 @@ export const horizontalPlanController = {
     }
 
     const { id } = req.params;
-    const existingPlan = horizontalPlanRepository.findById(id);
+    const existingPlan = await horizontalPlanRepository.findById(id);
     if (!existingPlan || existingPlan.schoolId !== req.user.schoolId) {
       return res.status(404).json({ success: false, error: '横向备课方案不存在' });
     }
 
     const updateData: UpdateHorizontalPlanRequest = req.body;
-    horizontalPlanRepository.update(id, updateData);
+    await horizontalPlanRepository.update(id, updateData);
 
-    const updatedPlan = horizontalPlanRepository.findById(id);
+    const updatedPlan = await horizontalPlanRepository.findById(id);
     return res.json({ success: true, data: updatedPlan });
   },
 
@@ -84,12 +84,12 @@ export const horizontalPlanController = {
     }
 
     const { id } = req.params;
-    const existingPlan = horizontalPlanRepository.findById(id);
+    const existingPlan = await horizontalPlanRepository.findById(id);
     if (!existingPlan || existingPlan.schoolId !== req.user.schoolId) {
       return res.status(404).json({ success: false, error: '横向备课方案不存在' });
     }
 
-    horizontalPlanRepository.delete(id);
+    await horizontalPlanRepository.delete(id);
     return res.json({ success: true, message: '删除成功' });
   },
 
@@ -103,8 +103,6 @@ export const horizontalPlanController = {
       return res.status(400).json({ success: false, error: '请提供班级ID' });
     }
 
-    // 这里简化处理，实际应该根据年级和学科筛选
-    // 为了演示，我们返回空数组
     return res.json({ success: true, data: [] });
-  }
+  },
 };

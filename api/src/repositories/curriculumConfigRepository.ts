@@ -1,4 +1,4 @@
-import { getDb } from '../db/db.js';
+import { supabase, handleSingle } from '../db/supabase.js';
 
 interface CurriculumConfig {
   id: string;
@@ -10,111 +10,77 @@ interface CurriculumConfig {
   createdAt: string;
 }
 
+function rowToConfig(row: any): CurriculumConfig {
+  return {
+    id: row.id,
+    schoolId: row.school_id,
+    subjectId: row.subject_id,
+    gradeId: row.grade_id,
+    version: row.version,
+    volumes: row.volumes,
+    createdAt: row.created_at,
+  };
+}
+
 export const curriculumConfigRepository = {
-  create: (
+  create: async (
     id: string,
     schoolId: string,
     subjectId: string,
     gradeId: number,
     version: string,
     volumes: string[]
-  ): CurriculumConfig => {
-    const db = getDb();
-    const stmt = db.prepare(
-      'INSERT INTO curriculum_configs (id, school_id, subject_id, grade_id, version, volumes) VALUES (?, ?, ?, ?, ?, ?)'
-    );
-    stmt.run(id, schoolId, subjectId, gradeId, version, JSON.stringify(volumes));
-    return curriculumConfigRepository.findById(id)!;
+  ): Promise<CurriculumConfig> => {
+    const { data, error } = await supabase.from('curriculum_configs').insert({
+      id, school_id: schoolId, subject_id: subjectId, grade_id: gradeId, version, volumes,
+    }).select('*').single();
+    if (error) throw error;
+    return rowToConfig(data!);
   },
 
-  findById: (id: string): CurriculumConfig | null => {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM curriculum_configs WHERE id = ?');
-    const row = stmt.get(id) as any;
-    if (!row) return null;
-    return {
-      id: row.id,
-      schoolId: row.school_id,
-      subjectId: row.subject_id,
-      gradeId: row.grade_id,
-      version: row.version,
-      volumes: JSON.parse(row.volumes),
-      createdAt: row.created_at
-    };
+  findById: async (id: string): Promise<CurriculumConfig | null> => {
+    const row = handleSingle(await supabase.from('curriculum_configs').select('*').eq('id', id).single());
+    return row ? rowToConfig(row) : null;
   },
 
-  findBySchool: (schoolId: string): CurriculumConfig[] => {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM curriculum_configs WHERE school_id = ?');
-    const rows = stmt.all(schoolId) as any[];
-    return rows.map(row => ({
-      id: row.id,
-      schoolId: row.school_id,
-      subjectId: row.subject_id,
-      gradeId: row.grade_id,
-      version: row.version,
-      volumes: JSON.parse(row.volumes),
-      createdAt: row.created_at
-    }));
+  findBySchool: async (schoolId: string): Promise<CurriculumConfig[]> => {
+    const { data, error } = await supabase.from('curriculum_configs').select('*').eq('school_id', schoolId);
+    if (error) throw error;
+    return (data || []).map(rowToConfig);
   },
 
-  findBySubjectAndGrade: (schoolId: string, subjectId: string, gradeId: number): CurriculumConfig[] => {
-    const db = getDb();
-    const stmt = db.prepare(
-      'SELECT * FROM curriculum_configs WHERE school_id = ? AND subject_id = ? AND grade_id = ?'
-    );
-    const rows = stmt.all(schoolId, subjectId, gradeId) as any[];
-    return rows.map(row => ({
-      id: row.id,
-      schoolId: row.school_id,
-      subjectId: row.subject_id,
-      gradeId: row.grade_id,
-      version: row.version,
-      volumes: JSON.parse(row.volumes),
-      createdAt: row.created_at
-    }));
+  findBySubjectAndGrade: async (schoolId: string, subjectId: string, gradeId: number): Promise<CurriculumConfig[]> => {
+    const { data, error } = await supabase.from('curriculum_configs').select('*').eq('school_id', schoolId).eq('subject_id', subjectId).eq('grade_id', gradeId);
+    if (error) throw error;
+    return (data || []).map(rowToConfig);
   },
 
-  update: (
+  update: async (
     id: string,
     version?: string,
     volumes?: string[]
-  ): CurriculumConfig | null => {
-    const db = getDb();
-    const existing = curriculumConfigRepository.findById(id);
+  ): Promise<CurriculumConfig | null> => {
+    const existing = await curriculumConfigRepository.findById(id);
     if (!existing) return null;
 
-    const updates: string[] = [];
-    const params: any[] = [];
+    const fields: Record<string, unknown> = {};
+    if (version !== undefined) fields.version = version;
+    if (volumes !== undefined) fields.volumes = volumes;
 
-    if (version !== undefined) {
-      updates.push('version = ?');
-      params.push(version);
-    }
-    if (volumes !== undefined) {
-      updates.push('volumes = ?');
-      params.push(JSON.stringify(volumes));
-    }
+    if (Object.keys(fields).length === 0) return existing;
 
-    if (updates.length === 0) return existing;
-
-    params.push(id);
-    const stmt = db.prepare(
-      `UPDATE curriculum_configs SET ${updates.join(', ')} WHERE id = ?`
-    );
-    stmt.run(...params);
+    const { error } = await supabase.from('curriculum_configs').update(fields).eq('id', id);
+    if (error) throw error;
     return curriculumConfigRepository.findById(id);
   },
 
-  delete: (id: string): void => {
-    const db = getDb();
-    const stmt = db.prepare('DELETE FROM curriculum_configs WHERE id = ?');
-    stmt.run(id);
+  delete: async (id: string): Promise<void> => {
+    const { error } = await supabase.from('curriculum_configs').delete().eq('id', id);
+    if (error) throw error;
   },
 
-  deleteBySchool: (schoolId: string): void => {
-    const db = getDb();
-    const stmt = db.prepare('DELETE FROM curriculum_configs WHERE school_id = ?');
-    stmt.run(schoolId);
-  }
+  deleteBySchool: async (schoolId: string): Promise<void> => {
+    const { error } = await supabase.from('curriculum_configs').delete().eq('school_id', schoolId);
+    if (error) throw error;
+  },
 };

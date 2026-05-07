@@ -1,8 +1,26 @@
-import { getDb } from '../db/db.js';
+import { supabase, handleSingle } from '../db/supabase.js';
 import type { HorizontalPlan } from '../../../shared/types.js';
 
+function rowToPlan(row: any): HorizontalPlan {
+  return {
+    id: row.id,
+    schoolId: row.school_id,
+    classId: row.class_id,
+    timetableId: row.timetable_id,
+    gradeSubjects: row.grade_subjects,
+    lessonDuration: row.lesson_duration,
+    lessonDate: row.lesson_date || undefined,
+    tracks: row.tracks || [],
+    interactions: row.interactions || [],
+    homework: row.homework || [],
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 export const horizontalPlanRepository = {
-  create: (
+  create: async (
     id: string,
     schoolId: string,
     classId: string,
@@ -10,96 +28,51 @@ export const horizontalPlanRepository = {
     gradeSubjects: Array<{ gradeId: number; subjectId: string }>,
     lessonDuration: number,
     lessonDate?: string
-  ): HorizontalPlan => {
-    const db = getDb();
-    const stmt = db.prepare(
-      'INSERT INTO horizontal_plans (id, school_id, class_id, timetable_id, grade_subjects, lesson_duration, lesson_date) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    );
-    stmt.run(id, schoolId, classId, timetableId, JSON.stringify(gradeSubjects), lessonDuration, lessonDate || null);
-    return horizontalPlanRepository.findById(id)!;
+  ): Promise<HorizontalPlan> => {
+    const { data, error } = await supabase.from('horizontal_plans').insert({
+      id, school_id: schoolId, class_id: classId, timetable_id: timetableId,
+      grade_subjects: gradeSubjects, lesson_duration: lessonDuration, lesson_date: lessonDate || null,
+    }).select('*').single();
+    if (error) throw error;
+    return rowToPlan(data!);
   },
 
-  findById: (id: string): HorizontalPlan | null => {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM horizontal_plans WHERE id = ?');
-    const row = stmt.get(id) as any;
-    if (!row) return null;
-    return {
-      id: row.id,
-      schoolId: row.school_id,
-      classId: row.class_id,
-      timetableId: row.timetable_id,
-      gradeSubjects: JSON.parse(row.grade_subjects),
-      lessonDuration: row.lesson_duration,
-      lessonDate: row.lesson_date || undefined,
-      tracks: row.tracks ? JSON.parse(row.tracks) : [],
-      interactions: row.interactions ? JSON.parse(row.interactions) : [],
-      homework: row.homework ? JSON.parse(row.homework) : [],
-      status: row.status,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    };
+  findById: async (id: string): Promise<HorizontalPlan | null> => {
+    const row = handleSingle(await supabase.from('horizontal_plans').select('*').eq('id', id).single());
+    return row ? rowToPlan(row) : null;
   },
 
-  findByTimetable: (timetableId: string): HorizontalPlan | null => {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM horizontal_plans WHERE timetable_id = ? LIMIT 1');
-    const row = stmt.get(timetableId) as any;
-    if (!row) return null;
-    return {
-      id: row.id,
-      schoolId: row.school_id,
-      classId: row.class_id,
-      timetableId: row.timetable_id,
-      gradeSubjects: JSON.parse(row.grade_subjects),
-      lessonDuration: row.lesson_duration,
-      lessonDate: row.lesson_date || undefined,
-      tracks: row.tracks ? JSON.parse(row.tracks) : [],
-      interactions: row.interactions ? JSON.parse(row.interactions) : [],
-      homework: row.homework ? JSON.parse(row.homework) : [],
-      status: row.status,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    };
+  findByTimetable: async (timetableId: string): Promise<HorizontalPlan | null> => {
+    const row = handleSingle(await supabase.from('horizontal_plans').select('*').eq('timetable_id', timetableId).limit(1).single());
+    return row ? rowToPlan(row) : null;
   },
 
-  update: (id: string, data: Partial<Omit<HorizontalPlan, 'id' | 'createdAt' | 'updatedAt'>>): void => {
-    const db = getDb();
-    const updates: string[] = [];
-    const params: any[] = [];
+  /** Batch lookup by timetable IDs — avoids N+1 */
+  findByTimetableIds: async (timetableIds: string[]): Promise<HorizontalPlan[]> => {
+    if (timetableIds.length === 0) return [];
+    const { data, error } = await supabase.from('horizontal_plans').select('*').in('timetable_id', timetableIds);
+    if (error) throw error;
+    return (data || []).map(rowToPlan);
+  },
 
-    if (data.tracks !== undefined) {
-      updates.push('tracks = ?');
-      params.push(JSON.stringify(data.tracks));
-    }
-    if (data.interactions !== undefined) {
-      updates.push('interactions = ?');
-      params.push(JSON.stringify(data.interactions));
-    }
-    if (data.homework !== undefined) {
-      updates.push('homework = ?');
-      params.push(JSON.stringify(data.homework));
-    }
-    if (data.status !== undefined) {
-      updates.push('status = ?');
-      params.push(data.status);
-    }
-    if (data.lessonDate !== undefined) {
-      updates.push('lesson_date = ?');
-      params.push(data.lessonDate);
-    }
+  update: async (id: string, data: Partial<Omit<HorizontalPlan, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> => {
+    const fields: Record<string, unknown> = {};
 
-    if (updates.length > 0) {
-      updates.push('updated_at = CURRENT_TIMESTAMP');
-      params.push(id);
-      const stmt = db.prepare(`UPDATE horizontal_plans SET ${updates.join(', ')} WHERE id = ?`);
-      stmt.run(...params);
+    if (data.tracks !== undefined) fields.tracks = data.tracks;
+    if (data.interactions !== undefined) fields.interactions = data.interactions;
+    if (data.homework !== undefined) fields.homework = data.homework;
+    if (data.status !== undefined) fields.status = data.status;
+    if (data.lessonDate !== undefined) fields.lesson_date = data.lessonDate;
+
+    if (Object.keys(fields).length > 0) {
+      fields.updated_at = new Date().toISOString();
+      const { error } = await supabase.from('horizontal_plans').update(fields).eq('id', id);
+      if (error) throw error;
     }
   },
 
-  delete: (id: string): void => {
-    const db = getDb();
-    const stmt = db.prepare('DELETE FROM horizontal_plans WHERE id = ?');
-    stmt.run(id);
-  }
+  delete: async (id: string): Promise<void> => {
+    const { error } = await supabase.from('horizontal_plans').delete().eq('id', id);
+    if (error) throw error;
+  },
 };

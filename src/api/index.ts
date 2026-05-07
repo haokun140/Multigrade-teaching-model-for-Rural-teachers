@@ -304,6 +304,27 @@ class ApiClient {
   async getProgress(): Promise<ApiResponse<ProgressStats>> {
     return this.request('/api/progress');
   }
+
+  // Textbook Catalog endpoints
+  async getTextbookVersions(subject?: string): Promise<ApiResponse<string[]>> {
+    const query = subject ? `?subject=${encodeURIComponent(subject)}` : '';
+    return this.request(`/api/textbooks/versions${query}`);
+  }
+
+  async getTextbookGrades(subject?: string, version?: string): Promise<ApiResponse<string[]>> {
+    const params = new URLSearchParams();
+    if (subject) params.append('subject', subject);
+    if (version) params.append('version', version);
+    return this.request(`/api/textbooks/grades?${params.toString()}`);
+  }
+
+  async getTextbookVolumes(subject?: string, version?: string, grade?: string): Promise<ApiResponse<string[]>> {
+    const params = new URLSearchParams();
+    if (subject) params.append('subject', subject);
+    if (version) params.append('version', version);
+    if (grade) params.append('grade', grade);
+    return this.request(`/api/textbooks/volumes?${params.toString()}`);
+  }
 }
 
 export const api = new ApiClient();

@@ -1,54 +1,46 @@
-import { getDb } from '../db/db.js';
+import { supabase, handleSingle } from '../db/supabase.js';
 import type { User } from '../../../shared/types.js';
 
+function rowToUser(row: any): User {
+  return {
+    id: row.id,
+    phone: row.phone,
+    name: row.name,
+    schoolId: row.school_id,
+    createdAt: row.created_at,
+  };
+}
+
 export const userRepository = {
-  create: (id: string, phone: string, name: string, passwordHash: string): User => {
-    const db = getDb();
-    const stmt = db.prepare(
-      'INSERT INTO users (id, phone, name, password_hash) VALUES (?, ?, ?, ?)'
-    );
-    stmt.run(id, phone, name, passwordHash);
-    return userRepository.findById(id)!;
+  create: async (id: string, phone: string, name: string, passwordHash: string): Promise<User> => {
+    const { data, error } = await supabase.from('users').insert({
+      id, phone, name, password_hash: passwordHash,
+    }).select('*').single();
+    if (error) throw error;
+    return rowToUser(data!);
   },
 
-  findById: (id: string): User | null => {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
-    const row = stmt.get(id) as any;
-    if (!row) return null;
-    return {
-      id: row.id,
-      phone: row.phone,
-      name: row.name,
-      schoolId: row.school_id,
-      createdAt: row.created_at
-    };
+  findById: async (id: string): Promise<User | null> => {
+    const row = handleSingle(await supabase.from('users').select('*').eq('id', id).single());
+    return row ? rowToUser(row) : null;
   },
 
-  findByPhone: (phone: string): User | null => {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM users WHERE phone = ?');
-    const row = stmt.get(phone) as any;
-    if (!row) return null;
-    return {
-      id: row.id,
-      phone: row.phone,
-      name: row.name,
-      schoolId: row.school_id,
-      createdAt: row.created_at
-    };
+  findByPhone: async (phone: string): Promise<User | null> => {
+    const row = handleSingle(await supabase.from('users').select('*').eq('phone', phone).single());
+    return row ? rowToUser(row) : null;
   },
 
-  updateSchool: (userId: string, schoolId: string | null): void => {
-    const db = getDb();
-    const stmt = db.prepare('UPDATE users SET school_id = ? WHERE id = ?');
-    stmt.run(schoolId, userId);
+  updateSchool: async (userId: string, schoolId: string | null): Promise<void> => {
+    const { error } = await supabase.from('users').update({ school_id: schoolId }).eq('id', userId);
+    if (error) throw error;
   },
 
-  getPasswordHash: (phone: string): string | null => {
-    const db = getDb();
-    const stmt = db.prepare('SELECT password_hash FROM users WHERE phone = ?');
-    const row = stmt.get(phone) as any;
-    return row ? row.password_hash : null;
-  }
+  getPasswordHash: async (phone: string): Promise<string | null> => {
+    const { data, error } = await supabase.from('users').select('password_hash').eq('phone', phone).single();
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data ? data.password_hash : null;
+  },
 };

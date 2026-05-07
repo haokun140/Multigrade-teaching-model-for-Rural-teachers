@@ -32,38 +32,34 @@ export const schoolController = {
     const schoolId = randomUUID();
     let inviteCode = generateInviteCode();
 
-    // 确保邀请码唯一
-    while (schoolRepository.findByInviteCode(inviteCode)) {
+    while (await schoolRepository.findByInviteCode(inviteCode)) {
       inviteCode = generateInviteCode();
     }
 
-    const school = schoolRepository.create(schoolId, name, region, type, inviteCode, req.user.id);
+    const school = await schoolRepository.create(schoolId, name, region, type, inviteCode, req.user.id);
 
-    // 保存时间配置
     if (timeSlots && Array.isArray(timeSlots)) {
-      timeSlots.forEach((slot: any) => {
-        timeConfigRepository.create(
+      for (const slot of timeSlots) {
+        await timeConfigRepository.create(
           randomUUID(),
           schoolId,
           slot.type,
           slot.startTime,
           slot.endTime
         );
-      });
+      }
     }
 
-    // 更新用户的学校信息
-    userRepository.updateSchool(req.user.id, schoolId);
+    await userRepository.updateSchool(req.user.id, schoolId);
 
-    // 重新生成 JWT token 以包含新的 schoolId
-    const updatedUser = userRepository.findById(req.user.id);
+    const updatedUser = await userRepository.findById(req.user.id);
     const token = jwt.sign(
-      { id: updatedUser.id, schoolId: updatedUser.schoolId },
+      { id: updatedUser!.id, schoolId: updatedUser!.schoolId },
       process.env.JWT_SECRET || 'default-secret',
       { expiresIn: '7d' }
     );
 
-    const response: AuthResponse = { user: updatedUser, token };
+    const response: AuthResponse = { user: updatedUser!, token };
     return res.json({ success: true, data: response });
   },
 
@@ -77,23 +73,21 @@ export const schoolController = {
       return res.status(400).json({ success: false, error: '请提供邀请码' });
     }
 
-    const school = schoolRepository.findByInviteCode(inviteCode.toUpperCase());
+    const school = await schoolRepository.findByInviteCode(inviteCode.toUpperCase());
     if (!school) {
       return res.status(404).json({ success: false, error: '邀请码无效' });
     }
 
-    // 更新用户的学校信息
-    userRepository.updateSchool(req.user.id, school.id);
+    await userRepository.updateSchool(req.user.id, school.id);
 
-    // 重新生成 JWT token 以包含新的 schoolId
-    const updatedUser = userRepository.findById(req.user.id);
+    const updatedUser = await userRepository.findById(req.user.id);
     const token = jwt.sign(
-      { id: updatedUser.id, schoolId: updatedUser.schoolId },
+      { id: updatedUser!.id, schoolId: updatedUser!.schoolId },
       process.env.JWT_SECRET || 'default-secret',
       { expiresIn: '7d' }
     );
 
-    const response: AuthResponse = { user: updatedUser, token };
+    const response: AuthResponse = { user: updatedUser!, token };
     return res.json({ success: true, data: response });
   },
 
@@ -106,7 +100,7 @@ export const schoolController = {
       return res.status(400).json({ success: false, error: '未加入学校' });
     }
 
-    const school = schoolRepository.findById(req.user.schoolId);
+    const school = await schoolRepository.findById(req.user.schoolId);
     if (!school) {
       return res.status(404).json({ success: false, error: '学校不存在' });
     }
@@ -123,7 +117,7 @@ export const schoolController = {
       return res.status(400).json({ success: false, error: '未加入学校' });
     }
 
-    const subjects = subjectRepository.findBySchool(req.user.schoolId);
+    const subjects = await subjectRepository.findBySchool(req.user.schoolId);
     return res.json({ success: true, data: subjects });
   },
 
@@ -136,7 +130,7 @@ export const schoolController = {
       return res.status(400).json({ success: false, error: '未加入学校' });
     }
 
-    const timeConfigs = timeConfigRepository.findBySchool(req.user.schoolId);
+    const timeConfigs = await timeConfigRepository.findBySchool(req.user.schoolId);
     return res.json({ success: true, data: timeConfigs });
   },
 
@@ -154,19 +148,18 @@ export const schoolController = {
       return res.status(400).json({ success: false, error: '请提供有效的时间配置' });
     }
 
-    // 删除旧配置，写入新配置
-    timeConfigRepository.deleteBySchool(req.user.schoolId);
-    timeSlots.forEach((slot: any) => {
-      timeConfigRepository.create(
+    await timeConfigRepository.deleteBySchool(req.user.schoolId);
+    for (const slot of timeSlots) {
+      await timeConfigRepository.create(
         slot.id || randomUUID(),
         req.user.schoolId,
         slot.type,
         slot.startTime,
         slot.endTime
       );
-    });
+    }
 
-    const updatedConfigs = timeConfigRepository.findBySchool(req.user.schoolId);
+    const updatedConfigs = await timeConfigRepository.findBySchool(req.user.schoolId);
     return res.json({ success: true, data: updatedConfigs });
   },
 
@@ -181,17 +174,17 @@ export const schoolController = {
 
     const { subjectId, gradeId } = req.query;
     let configs;
-    
+
     if (subjectId && gradeId) {
-      configs = curriculumConfigRepository.findBySubjectAndGrade(
+      configs = await curriculumConfigRepository.findBySubjectAndGrade(
         req.user.schoolId,
         subjectId as string,
         parseInt(gradeId as string)
       );
     } else {
-      configs = curriculumConfigRepository.findBySchool(req.user.schoolId);
+      configs = await curriculumConfigRepository.findBySchool(req.user.schoolId);
     }
-    
+
     return res.json({ success: true, data: configs });
   },
 
@@ -205,13 +198,13 @@ export const schoolController = {
     }
 
     const { subjectId, gradeId, version, volumes }: CreateCurriculumConfigRequest = req.body;
-    
+
     if (!subjectId || !gradeId || !version || !volumes || !Array.isArray(volumes)) {
       return res.status(400).json({ success: false, error: '请提供完整的配置信息' });
     }
 
     const id = randomUUID();
-    const config = curriculumConfigRepository.create(
+    const config = await curriculumConfigRepository.create(
       id,
       req.user.schoolId,
       subjectId,
@@ -231,8 +224,8 @@ export const schoolController = {
     const { id } = req.params;
     const { version, volumes } = req.body;
 
-    const config = curriculumConfigRepository.update(id, version, volumes);
-    
+    const config = await curriculumConfigRepository.update(id, version, volumes);
+
     if (!config) {
       return res.status(404).json({ success: false, error: '配置不存在' });
     }
@@ -246,8 +239,8 @@ export const schoolController = {
     }
 
     const { id } = req.params;
-    curriculumConfigRepository.delete(id);
+    await curriculumConfigRepository.delete(id);
 
     return res.json({ success: true, data: null });
-  }
+  },
 };

@@ -1,4 +1,4 @@
-import { getDb } from '../db/db.js';
+import { supabase, handleSingle } from '../db/supabase.js';
 
 interface TimeConfig {
   id: string;
@@ -9,60 +9,50 @@ interface TimeConfig {
   createdAt: string;
 }
 
+function rowToConfig(row: any): TimeConfig {
+  return {
+    id: row.id,
+    schoolId: row.school_id,
+    type: row.type,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    createdAt: row.created_at,
+  };
+}
+
 export const timeConfigRepository = {
-  create: (
+  create: async (
     id: string,
     schoolId: string,
     type: string,
     startTime: string,
     endTime: string
-  ): TimeConfig => {
-    const db = getDb();
-    const stmt = db.prepare(
-      'INSERT INTO time_configs (id, school_id, type, start_time, end_time) VALUES (?, ?, ?, ?, ?)'
-    );
-    stmt.run(id, schoolId, type, startTime, endTime);
-    return timeConfigRepository.findById(id)!;
+  ): Promise<TimeConfig> => {
+    const { data, error } = await supabase.from('time_configs').insert({
+      id, school_id: schoolId, type, start_time: startTime, end_time: endTime,
+    }).select('*').single();
+    if (error) throw error;
+    return rowToConfig(data!);
   },
 
-  findById: (id: string): TimeConfig | null => {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM time_configs WHERE id = ?');
-    const row = stmt.get(id) as any;
-    if (!row) return null;
-    return {
-      id: row.id,
-      schoolId: row.school_id,
-      type: row.type,
-      startTime: row.start_time,
-      endTime: row.end_time,
-      createdAt: row.created_at
-    };
+  findById: async (id: string): Promise<TimeConfig | null> => {
+    const row = handleSingle(await supabase.from('time_configs').select('*').eq('id', id).single());
+    return row ? rowToConfig(row) : null;
   },
 
-  findBySchool: (schoolId: string): TimeConfig[] => {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM time_configs WHERE school_id = ? ORDER BY start_time');
-    const rows = stmt.all(schoolId) as any[];
-    return rows.map(row => ({
-      id: row.id,
-      schoolId: row.school_id,
-      type: row.type,
-      startTime: row.start_time,
-      endTime: row.end_time,
-      createdAt: row.created_at
-    }));
+  findBySchool: async (schoolId: string): Promise<TimeConfig[]> => {
+    const { data, error } = await supabase.from('time_configs').select('*').eq('school_id', schoolId).order('start_time');
+    if (error) throw error;
+    return (data || []).map(rowToConfig);
   },
 
-  deleteBySchool: (schoolId: string): void => {
-    const db = getDb();
-    const stmt = db.prepare('DELETE FROM time_configs WHERE school_id = ?');
-    stmt.run(schoolId);
+  deleteBySchool: async (schoolId: string): Promise<void> => {
+    const { error } = await supabase.from('time_configs').delete().eq('school_id', schoolId);
+    if (error) throw error;
   },
 
-  delete: (id: string): void => {
-    const db = getDb();
-    const stmt = db.prepare('DELETE FROM time_configs WHERE id = ?');
-    stmt.run(id);
-  }
+  delete: async (id: string): Promise<void> => {
+    const { error } = await supabase.from('time_configs').delete().eq('id', id);
+    if (error) throw error;
+  },
 };

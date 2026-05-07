@@ -1,62 +1,50 @@
-import { getDb } from '../db/db.js';
+import { supabase, handleSingle } from '../db/supabase.js';
 import type { Class } from '../../../shared/types.js';
 
+function rowToClass(row: any): Class {
+  return {
+    id: row.id,
+    schoolId: row.school_id,
+    name: row.name,
+    gradeIds: row.grade_ids,
+    type: row.type,
+    createdAt: row.created_at,
+  };
+}
+
 export const classRepository = {
-  create: (
+  create: async (
     id: string,
     schoolId: string,
     name: string,
     gradeIds: number[],
     type: string
-  ): Class => {
-    const db = getDb();
-    const stmt = db.prepare(
-      'INSERT INTO classes (id, school_id, name, grade_ids, type) VALUES (?, ?, ?, ?, ?)'
-    );
-    stmt.run(id, schoolId, name, JSON.stringify(gradeIds), type);
-    return classRepository.findById(id)!;
+  ): Promise<Class> => {
+    const { data, error } = await supabase.from('classes').insert({
+      id, school_id: schoolId, name, grade_ids: gradeIds, type,
+    }).select('*').single();
+    if (error) throw error;
+    return rowToClass(data!);
   },
 
-  findById: (id: string): Class | null => {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM classes WHERE id = ?');
-    const row = stmt.get(id) as any;
-    if (!row) return null;
-    return {
-      id: row.id,
-      schoolId: row.school_id,
-      name: row.name,
-      gradeIds: JSON.parse(row.grade_ids),
-      type: row.type,
-      createdAt: row.created_at
-    };
+  findById: async (id: string): Promise<Class | null> => {
+    const row = handleSingle(await supabase.from('classes').select('*').eq('id', id).single());
+    return row ? rowToClass(row) : null;
   },
 
-  findBySchool: (schoolId: string): Class[] => {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM classes WHERE school_id = ?');
-    const rows = stmt.all(schoolId) as any[];
-    return rows.map(row => ({
-      id: row.id,
-      schoolId: row.school_id,
-      name: row.name,
-      gradeIds: JSON.parse(row.grade_ids),
-      type: row.type,
-      createdAt: row.created_at
-    }));
+  findBySchool: async (schoolId: string): Promise<Class[]> => {
+    const { data, error } = await supabase.from('classes').select('*').eq('school_id', schoolId);
+    if (error) throw error;
+    return (data || []).map(rowToClass);
   },
 
-  update: (id: string, name: string, gradeIds: number[], type: string): void => {
-    const db = getDb();
-    const stmt = db.prepare(
-      'UPDATE classes SET name = ?, grade_ids = ?, type = ? WHERE id = ?'
-    );
-    stmt.run(name, JSON.stringify(gradeIds), type, id);
+  update: async (id: string, name: string, gradeIds: number[], type: string): Promise<void> => {
+    const { error } = await supabase.from('classes').update({ name, grade_ids: gradeIds, type }).eq('id', id);
+    if (error) throw error;
   },
 
-  delete: (id: string): void => {
-    const db = getDb();
-    const stmt = db.prepare('DELETE FROM classes WHERE id = ?');
-    stmt.run(id);
-  }
+  delete: async (id: string): Promise<void> => {
+    const { error } = await supabase.from('classes').delete().eq('id', id);
+    if (error) throw error;
+  },
 };

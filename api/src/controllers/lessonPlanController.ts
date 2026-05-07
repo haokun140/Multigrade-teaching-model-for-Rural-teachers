@@ -17,14 +17,13 @@ export const lessonPlanController = {
 
     let plans;
     if (classId) {
-      plans = lessonPlanRepository.findByClassAndGradeAndSubject(
+      plans = await lessonPlanRepository.findByClassAndGradeAndSubject(
         classId as string,
         Number(gradeId),
         subjectId as string
       );
     } else {
-      // 纵向备课场景：按学校、年级、学科查询，不按班级过滤
-      plans = lessonPlanRepository.findBySchoolGradeAndSubject(
+      plans = await lessonPlanRepository.findBySchoolGradeAndSubject(
         req.user.schoolId,
         Number(gradeId),
         subjectId as string
@@ -40,7 +39,7 @@ export const lessonPlanController = {
     }
 
     const { id } = req.params;
-    const plan = lessonPlanRepository.findById(id);
+    const plan = await lessonPlanRepository.findById(id);
     if (!plan) {
       return res.status(404).json({ success: false, error: '备课方案不存在' });
     }
@@ -59,7 +58,7 @@ export const lessonPlanController = {
     }
 
     const planId = randomUUID();
-    const plan = lessonPlanRepository.create(
+    const plan = await lessonPlanRepository.create(
       planId,
       req.user.schoolId,
       classId,
@@ -85,15 +84,15 @@ export const lessonPlanController = {
     }
 
     const { id } = req.params;
-    const existingPlan = lessonPlanRepository.findById(id);
+    const existingPlan = await lessonPlanRepository.findById(id);
     if (!existingPlan || existingPlan.schoolId !== req.user.schoolId) {
       return res.status(404).json({ success: false, error: '备课方案不存在' });
     }
 
     const updateData: UpdateLessonPlanRequest = req.body;
-    lessonPlanRepository.update(id, updateData);
+    await lessonPlanRepository.update(id, updateData);
 
-    const updatedPlan = lessonPlanRepository.findById(id);
+    const updatedPlan = await lessonPlanRepository.findById(id);
     return res.json({ success: true, data: updatedPlan });
   },
 
@@ -103,12 +102,12 @@ export const lessonPlanController = {
     }
 
     const { id } = req.params;
-    const existingPlan = lessonPlanRepository.findById(id);
+    const existingPlan = await lessonPlanRepository.findById(id);
     if (!existingPlan || existingPlan.schoolId !== req.user.schoolId) {
       return res.status(404).json({ success: false, error: '备课方案不存在' });
     }
 
-    lessonPlanRepository.delete(id);
+    await lessonPlanRepository.delete(id);
     return res.json({ success: true, message: '删除成功' });
   },
 
@@ -118,13 +117,13 @@ export const lessonPlanController = {
     }
 
     const { id } = req.params;
-    const existingPlan = lessonPlanRepository.findById(id);
+    const existingPlan = await lessonPlanRepository.findById(id);
     if (!existingPlan || existingPlan.schoolId !== req.user.schoolId) {
       return res.status(404).json({ success: false, error: '备课方案不存在' });
     }
 
     const newPlanId = randomUUID();
-    const newPlan = lessonPlanRepository.create(
+    const newPlan = await lessonPlanRepository.create(
       newPlanId,
       req.user.schoolId,
       existingPlan.classId,
@@ -136,14 +135,13 @@ export const lessonPlanController = {
       null
     );
 
-    // 复制内容
-    lessonPlanRepository.update(newPlanId, {
+    await lessonPlanRepository.update(newPlanId, {
       objectives: existingPlan.objectives,
       steps: existingPlan.steps,
-      status: 'draft'
+      status: 'draft',
     });
 
-    const copiedPlan = lessonPlanRepository.findById(newPlanId);
+    const copiedPlan = await lessonPlanRepository.findById(newPlanId);
     return res.json({ success: true, data: copiedPlan });
   },
 
@@ -152,7 +150,7 @@ export const lessonPlanController = {
       return res.status(401).json({ success: false, error: '未认证或未加入学校' });
     }
 
-    const plans = lessonPlanRepository.findBySchool(req.user.schoolId);
+    const plans = await lessonPlanRepository.findBySchool(req.user.schoolId);
     return res.json({ success: true, data: plans });
-  }
+  },
 };

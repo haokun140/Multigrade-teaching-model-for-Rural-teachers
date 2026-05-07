@@ -10,7 +10,7 @@ export const classController = {
       return res.status(401).json({ success: false, error: '未认证或未加入学校' });
     }
 
-    const classes = classRepository.findBySchool(req.user.schoolId);
+    const classes = await classRepository.findBySchool(req.user.schoolId);
     return res.json({ success: true, data: classes });
   },
 
@@ -25,7 +25,7 @@ export const classController = {
     }
 
     const classId = randomUUID();
-    const newClass = classRepository.create(
+    const newClass = await classRepository.create(
       classId,
       req.user.schoolId,
       name,
@@ -44,13 +44,13 @@ export const classController = {
     const { id } = req.params;
     const { name, gradeIds, type } = req.body;
 
-    const existingClass = classRepository.findById(id);
+    const existingClass = await classRepository.findById(id);
     if (!existingClass || existingClass.schoolId !== req.user.schoolId) {
       return res.status(404).json({ success: false, error: '班级不存在' });
     }
 
-    classRepository.update(id, name, gradeIds, type);
-    const updatedClass = classRepository.findById(id);
+    await classRepository.update(id, name, gradeIds, type);
+    const updatedClass = await classRepository.findById(id);
     return res.json({ success: true, data: updatedClass });
   },
 
@@ -60,12 +60,12 @@ export const classController = {
     }
 
     const { id } = req.params;
-    const existingClass = classRepository.findById(id);
+    const existingClass = await classRepository.findById(id);
     if (!existingClass || existingClass.schoolId !== req.user.schoolId) {
       return res.status(404).json({ success: false, error: '班级不存在' });
     }
 
-    classRepository.delete(id);
+    await classRepository.delete(id);
     return res.json({ success: true, message: '删除成功' });
-  }
+  },
 };
